@@ -1,6 +1,8 @@
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { SettingsPanel } from '../components/common/SettingsPanel.jsx';
-import { useApp } from './AppProviders.jsx';
+import { useEffect, useState } from 'react';
+import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { socketClient } from '../lib/socketClient.js';
+import { HomePage } from '../pages/HomePage.jsx';
+import { RoomPage } from '../pages/RoomPage.jsx';
 
 function Placeholder({ title, description }) {
   return (
@@ -12,23 +14,30 @@ function Placeholder({ title, description }) {
   );
 }
 
-function Home() {
-  const { preferences, updatePreferences } = useApp();
-  return (
-    <main className="shell-main shell-main--home">
-      <section className="foundation-intro">
-        <p className="foundation-intro__label">十手牌的私人牌局</p>
-        <h1>专注每一次决定。</h1>
-        <p>Project River 为朋友局和单人练习提供清晰、克制的德州扑克体验。</p>
-        <p className="play-money-notice">仅使用虚拟筹码，不支持充值、提现或现实奖励。</p>
-      </section>
-      <SettingsPanel preferences={preferences} onChange={updatePreferences} />
-    </main>
-  );
-}
-
-function Shell() {
+function Shell({ socket }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [room, setRoom] = useState(null);
+  const [errorCode, setErrorCode] = useState(null);
+  const [connectionState, setConnectionState] = useState('idle');
+  const [notice, setNotice] = useState(null);
+
+  useEffect(() => socket.subscribe(message => {
+    if (message.type === 'client.status') setConnectionState(message.payload.status);
+    else if (message.type === 'client.error' || message.type === 'game.error') {
+      setErrorCode(message.payload.code);
+      if (message.payload.code === 'ROOM_NOT_FOUND') navigate('/');
+    } else if (message.type === 'server.notice') setNotice(message.payload.code);
+    else if (message.type === 'room.state') {
+      setErrorCode(null);
+      setRoom({ ...message.payload, revision: message.revision });
+      const code = message.payload.code;
+      if (message.payload.phase === 'waiting') navigate(`/room/${code}`);
+      else if (message.payload.phase === 'playing') navigate(`/game/${code}`);
+      else if (message.payload.phase === 'results') navigate(`/results/${code}`);
+    }
+  }), [navigate, socket]);
+
   return (
     <div className="app-shell">
       <header className="shell-header">
@@ -42,8 +51,8 @@ function Shell() {
         </nav>
       </header>
       <Routes location={location}>
-        <Route path="/" element={<Home />} />
-        <Route path="/room/:code" element={<Placeholder title="等待入座" description="牌桌准备中。" />} />
+        <Route path="/" element={<HomePage socket={socket} errorCode={errorCode} />} />
+        <Route path="/room/:code" element={<RoomPage room={room} socket={socket} connectionState={connectionState} notice={notice} />} />
         <Route path="/game/:code" element={<Placeholder title="牌局进行中" description="牌桌界面准备中。" />} />
         <Route path="/tutorial" element={<Placeholder title="规则速学" description="用一局牌掌握关键动作。" />} />
         <Route path="/practice" element={<Placeholder title="练习桌" description="与五种风格的电脑玩家练习。" />} />
@@ -54,6 +63,6 @@ function Shell() {
   );
 }
 
-export default function App() {
-  return <Shell />;
+export default function App({ socket = socketClient }) {
+  return <Shell socket={socket} />;
 }

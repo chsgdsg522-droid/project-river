@@ -1,5 +1,12 @@
 export const STORAGE_KEY = 'river.state.v1';
-export const AVATAR_IDS = Object.freeze(['current', 'delta', 'eddy', 'rapid', 'reef', 'tide']);
+export const AVATAR_IDS = Object.freeze([
+  'river-fox',
+  'river-owl',
+  'river-bear',
+  'river-cat',
+  'river-rabbit',
+  'river-dog',
+]);
 
 export const DEFAULT_PREFERENCES = Object.freeze({
   theme: 'dark',
