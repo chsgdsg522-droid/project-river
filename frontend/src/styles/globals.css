@@ -6,22 +6,19 @@
    Base
    -------------------------------------------------------------------------- */
 :root {
-  --bg-gradient: radial-gradient(ellipse at 50% -10%, #17203a 0%, #0b0f1c 45%, #06080f 100%);
-  --accent: #d4af37;
-  --font-body: 'Outfit', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-display: 'Cinzel', 'Georgia', serif;
+  --font-body: 'Avenir Next', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 body {
   margin: 0;
   font-family: var(--font-body);
-  color: var(--text-primary, #f2f0ea);
-  transition: background 0.4s ease;
+  color: var(--color-text, #eef3f1);
+  transition: background 0.25s ease;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: rgba(212, 175, 55, 0.35);
+  background: rgb(98 214 180 / 30%);
 }
 
 ::-webkit-scrollbar {
