@@ -1,62 +1,57 @@
-import { Deck } from './Deck.js';
-
-export function startHand(game) {
-  const activePlayers = game.getActivePlayers();
-  if (activePlayers.length < 2) return;
-  console.log('===== NEW HAND START =====');
-  game.handInProgress = true;
-  game.deck = new Deck();
-  game.communityCards = [];
-  game.pot = 0;
-  game.currentBet = 0;
-  game.minRaise = game.bigBlind;
-  game.lastRaiseBy = null;
-  game.currentRound = 'preflop';
-  game.winner = null;
-  game.waitingForAction = true;
-  game.actedPlayers.clear();
-  game.sideBets = [];
-  game.sideBetResults = [];
-  game._allInResolving = false;
-
-  for (let p of activePlayers) {
-    if (p.chips <= 0) {
-      console.log(`${p.name} had 0 chips, resetting to ${game.startingChips}`);
-      p.chips = game.startingChips;
-    }
-    p.resetForNewHand();
-    p.holeCards = [game.deck.draw(), game.deck.draw()];
-    p.revealed = false;
-    console.log(`${p.name} cards: ${p.holeCards[0].rank}${p.holeCards[0].suit} ${p.holeCards[1].rank}${p.holeCards[1].suit}`);
-  }
-
-  const activeIds = activePlayers.map(p => p.id);
-  let currentDealerIndex = activeIds.indexOf(game.dealerIndex);
-  if (currentDealerIndex === -1) currentDealerIndex = 0;
-  game.dealerIndex = activeIds[(currentDealerIndex + 1) % activePlayers.length];
-  const dealerIdxInActive = activeIds.indexOf(game.dealerIndex);
-  const sbIdx = (dealerIdxInActive + 1) % activePlayers.length;
-  const bbIdx = (dealerIdxInActive + 2) % activePlayers.length;
-
-  const sbPlayer = activePlayers[sbIdx];
-  const bbPlayer = activePlayers[bbIdx];
-
-  postBlind(game, sbPlayer, game.smallBlind);
-  postBlind(game, bbPlayer, game.bigBlind);
-  game.currentBet = game.bigBlind;
-  game.minRaise = game.bigBlind;
-  game.lastRaiseBy = bbPlayer.id;
-
-  console.log(`SB: ${sbPlayer.name} (${game.smallBlind}), BB: ${bbPlayer.name} (${game.bigBlind})`);
-  game.currentPlayerIndex = activePlayers[(bbIdx + 1) % activePlayers.length].id;
-  console.log(`First to act: ${game.players.find(p => p.id === game.currentPlayerIndex)?.name}`);
+export function activeIds(order, players) {
+  return order.filter(playerId => players[playerId]?.stack > 0);
 }
 
-export function postBlind(game, player, amount) {
-  const actual = Math.min(amount, player.chips);
-  player.chips -= actual;
-  player.currentBet = actual;
-  player.totalBet += actual;
-  game.pot += actual;
-  if (player.chips === 0) player.isAllIn = true;
+export function nextActiveId(order, players, fromId, { includeFrom = false } = {}) {
+  const startIndex = order.indexOf(fromId);
+  const start = startIndex < 0 ? order.length - 1 : startIndex;
+  const firstOffset = includeFrom ? 0 : 1;
+  for (let offset = firstOffset; offset < order.length + firstOffset; offset += 1) {
+    const playerId = order[(start + offset) % order.length];
+    if (players[playerId]?.stack > 0) return playerId;
+  }
+  return null;
+}
+
+export function resolveButton(order, players, preferredId, rotate) {
+  if (!rotate && players[preferredId]?.stack > 0) return preferredId;
+  return nextActiveId(order, players, preferredId);
+}
+
+export function positionsFor(order, players, buttonId) {
+  const active = activeIds(order, players);
+  if (active.length < 2) throw new Error('NOT_ENOUGH_PLAYERS');
+
+  if (active.length === 2) {
+    const bigBlindId = nextActiveId(order, players, buttonId);
+    return { smallBlindId: buttonId, bigBlindId, preflopActorId: buttonId };
+  }
+
+  const smallBlindId = nextActiveId(order, players, buttonId);
+  const bigBlindId = nextActiveId(order, players, smallBlindId);
+  return {
+    smallBlindId,
+    bigBlindId,
+    preflopActorId: nextActiveId(order, players, bigBlindId),
+  };
+}
+
+export function postBlind(player, blind) {
+  const amount = Math.min(player.stack, blind);
+  player.stack -= amount;
+  player.streetCommitment += amount;
+  player.totalCommitment += amount;
+  if (player.stack === 0) player.allIn = true;
+  return amount;
+}
+
+export function dealHoleCards(deck, order, players, buttonId) {
+  const active = activeIds(order, players);
+  const firstId = nextActiveId(order, players, buttonId);
+  const firstIndex = active.indexOf(firstId);
+  const dealOrder = [...active.slice(firstIndex), ...active.slice(0, firstIndex)];
+
+  for (let round = 0; round < 2; round += 1) {
+    for (const playerId of dealOrder) players[playerId].holeCards.push(deck.draw());
+  }
 }
