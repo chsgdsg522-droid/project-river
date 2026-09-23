@@ -1,5 +1,5 @@
 // backend/handlers/gameHandlers.js
-import { getDealerMessage } from '../game/dealerMessages.js';
+import { getDealerMessage } from '../src/game/dealerMessages.js';
 
 export function handleResetLobby(msg, ws, clients, lobbyManager, broadcastGameState, broadcastSystemMessage, clearAllTimers) {
   const client = clients.get(ws);

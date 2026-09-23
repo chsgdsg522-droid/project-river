@@ -1,5 +1,5 @@
-import { Game } from './game/Game.js';
-import { Player } from './game/Player.js';
+import { Game } from './src/game/Game.js';
+import { Player } from './src/game/Player.js';
 import { addToWaitlist, promoteFromWaitlist } from './WaitlistManager.js';
 import { addHandHistory, getHandHistory } from './HandHistoryStore.js';
 import { addChatMessage, getChatMessages } from './LobbyChatStore.js';

@@ -1,5 +1,5 @@
 // backend/BroadcastScheduler.js
-import { getDealerMessage } from './game/dealerMessages.js';
+import { getDealerMessage } from './src/game/dealerMessages.js';
 
 export class BroadcastScheduler {
   constructor(lobbyManager, clientRegistry, broadcastFns, timerUtils) {

@@ -1,4 +1,4 @@
-import { getDealerMessage } from '../game/dealerMessages.js';
+import { getDealerMessage } from '../src/game/dealerMessages.js';
 
 export function handleJoin(msg, ws, clients, broadcastLobbyList, broadcastOnlinePlayers, generalChat) {
   const { name } = msg;

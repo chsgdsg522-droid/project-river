@@ -1,0 +1,23 @@
+{
+  "name": "project-river",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "test": "npm run test -w backend && npm run test -w frontend",
+    "build": "npm run build -w frontend",
+    "test:e2e": "playwright test",
+    "check": "npm test && npm run build"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

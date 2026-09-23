@@ -1,4 +1,4 @@
-import { Player } from './game/Player.js';
+import { Player } from './src/game/Player.js';
 import { MAX_PLAYERS, DEFAULT_STARTING_CHIPS } from './constants.js';
 
 export function addToWaitlist(lobby, playerId, playerName) {

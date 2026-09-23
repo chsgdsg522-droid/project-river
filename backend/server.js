@@ -10,7 +10,7 @@ import { ClientRegistry } from './ClientRegistry.js';
 import { createMessageRouter } from './MessageRouter.js';
 import { BroadcastScheduler } from './BroadcastScheduler.js';
 import * as timerUtils from './utils/timerUtils.js';
-import { getDealerMessage } from './game/dealerMessages.js';
+import { getDealerMessage } from './src/game/dealerMessages.js';
 import { MAX_NAME_LENGTH, CHAT_HISTORY_SIZE } from './constants.js';
 import { logger } from './utils/logger.js';
 
