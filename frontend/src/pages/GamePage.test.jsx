@@ -1,0 +1,80 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { PlayerSeat } from '../components/poker/PlayerSeat.jsx';
+import { GamePage } from './GamePage.jsx';
+
+function gameRoomFixture(overrides = {}) {
+  return {
+    code: 'ABC234',
+    handId: 'ABC234_m1_h2',
+    revision: 12,
+    phase: 'playing',
+    hostPlayerId: 'hero',
+    self: { playerId: 'hero', role: 'player' },
+    seats: [
+      { seat: 0, playerId: 'hero', kind: 'human', connected: true, controller: 'human', displayName: '河岸玩家', avatarId: 'river-fox' },
+      { seat: 1, playerId: 'villain', kind: 'human', connected: false, controller: 'bot', displayName: '暂离朋友', avatarId: 'river-owl' },
+      { seat: 2, playerId: 'bot-1', kind: 'bot', connected: true, controller: 'bot', displayName: '松果', avatarId: 'river-bear' },
+      { seat: 3, playerId: null, kind: null },
+      { seat: 4, playerId: null, kind: null },
+      { seat: 5, playerId: null, kind: null },
+    ],
+    spectators: [],
+    game: {
+      phase: 'playing', handNumber: 2, street: 'flop', board: ['2c', '7d', 'Jh'],
+      players: {
+        hero: { id: 'hero', seat: 0, displayName: '河岸玩家', stack: 920, streetCommitment: 80, folded: false, allIn: false, holeCards: ['As', 'Ah'], lastAction: null },
+        villain: { id: 'villain', seat: 1, displayName: '暂离朋友', stack: 900, streetCommitment: 80, folded: false, allIn: false, lastAction: null },
+        'bot-1': { id: 'bot-1', seat: 2, displayName: '松果', stack: 880, streetCommitment: 80, folded: false, allIn: false, lastAction: null },
+      },
+      order: ['hero', 'villain', 'bot-1'], buttonId: 'villain', smallBlindId: 'bot-1', bigBlindId: 'hero',
+      actorId: 'hero', currentBet: 80, pot: 240, legalActions: { fold: false, check: true, callAmount: null, bet: { minTo: 20, maxTo: 1_000 }, raise: null, allInTo: 1_000 },
+      matchStatus: { handNumber: 2, complete: false }, lastHandResult: null,
+    },
+    actionDeadline: Date.now() + 15_000,
+    ...overrides,
+  };
+}
+
+function fakeSocket() {
+  return { sent: [], nextActionId: () => 'action_test_0001', request(message) { this.sent.push(message); } };
+}
+
+describe('GamePage', () => {
+  it('shows only the recipient cards and emits one server-shaped action', async () => {
+    const socket = fakeSocket();
+    render(<GamePage room={gameRoomFixture()} socket={socket} />);
+
+    expect(screen.getByLabelText('你的手牌')).toHaveTextContent('A♠A♥');
+    expect(screen.queryByText('K♠')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '过牌 Check' }));
+    expect(socket.sent).toEqual([{
+      type: 'game.action', roomCode: 'ABC234', handId: 'ABC234_m1_h2',
+      actionId: 'action_test_0001', revision: 12, action: { type: 'check' },
+    }]);
+  });
+
+  it('removes action controls for spectators and shows connection takeover state', () => {
+    const room = gameRoomFixture({ self: { playerId: 'watcher', role: 'spectator' } });
+    room.game.legalActions = null;
+    render(<GamePage room={room} socket={fakeSocket()} />);
+
+    expect(screen.queryByLabelText('牌局操作')).not.toBeInTheDocument();
+    expect(screen.getByText('连接中断，电脑暂时代打')).toBeVisible();
+    expect(screen.getByText('观战模式')).toBeVisible();
+  });
+
+  it('renders a hostile nickname as text', () => {
+    const name = '<img src=x>河岸玩家-1234567890';
+    render(<PlayerSeat player={{ id: 'x', displayName: name, stack: 1_000, streetCommitment: 0 }} seat={{ seat: 0, connected: true, controller: 'human' }} />);
+
+    expect(screen.getByText(name)).toBeVisible();
+    expect(document.querySelector('img[src="x"]')).toBeNull();
+  });
+
+  it('offers exactly twelve fixed quick-chat choices', () => {
+    render(<GamePage room={gameRoomFixture()} socket={fakeSocket()} />);
+    expect(screen.getAllByRole('button', { name: /^快捷消息/ })).toHaveLength(12);
+  });
+});
