@@ -58,6 +58,7 @@ function projectSeat(seat, players) {
     displayName: player?.displayName ?? seat.displayName ?? null,
     avatarId: player?.avatarId ?? seat.avatarId ?? null,
     connected: seat.connected ?? true,
+    controller: seat.controller ?? (seat.kind === 'bot' ? 'bot' : 'human'),
   };
 }
 

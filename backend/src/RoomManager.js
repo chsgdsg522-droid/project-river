@@ -21,7 +21,13 @@ function roomError(code) {
 }
 
 function emptySeat(seat) {
-  return { seat, playerId: null, kind: null, personaId: null, displayName: null, avatarId: null, connected: false, joinedAt: null };
+  return { seat, playerId: null, kind: null, personaId: null, displayName: null, avatarId: null, connected: false, joinedAt: null, disconnectedAt: null, controller: null };
+}
+
+export function chooseTimeoutAction(legalActions) {
+  if (legalActions?.check) return { type: 'check' };
+  if (legalActions?.fold) return { type: 'fold' };
+  throw roomError('NO_TIMEOUT_ACTION');
 }
 
 export class RoomManager {
@@ -39,6 +45,8 @@ export class RoomManager {
     this.rules = rules;
     this.rooms = new Map();
     this.personas = DEFAULT_BOTS;
+    this.actionResults = new Map();
+    this.timeoutActionCounter = 0;
   }
 
   generateUniqueCode() {
@@ -59,6 +67,8 @@ export class RoomManager {
       avatarId: profile.avatarId,
       connected: true,
       joinedAt: this.now(),
+      disconnectedAt: null,
+      controller: 'human',
     };
   }
 
@@ -72,6 +82,8 @@ export class RoomManager {
       avatarId: persona.avatarId,
       connected: true,
       joinedAt: this.now(),
+      disconnectedAt: null,
+      controller: 'bot',
     };
   }
 
@@ -92,6 +104,8 @@ export class RoomManager {
       lastHumanLeftAt: null,
       game: null,
       result: null,
+      matchNumber: 0,
+      handId: null,
     };
     this.rooms.set(code, room);
     return { room, playerId: host.playerId };
@@ -139,6 +153,8 @@ export class RoomManager {
       avatarId: profile.avatarId,
       connected: true,
       joinedAt,
+      disconnectedAt: null,
+      controller: 'human',
     });
     room.lastHumanLeftAt = null;
     this.touch(room);
@@ -153,6 +169,8 @@ export class RoomManager {
       avatarId: profile.avatarId,
       connected: true,
       joinedAt: this.now(),
+      disconnectedAt: null,
+      controller: 'human',
     });
     room.lastHumanLeftAt = null;
     this.touch(room);
@@ -179,10 +197,75 @@ export class RoomManager {
       randomInt: this.gameRandomInt,
     });
     room.game.startMatch();
+    room.matchNumber += 1;
+    room.handId = `${room.code}_m${room.matchNumber}_h${room.game.handNumber}`;
     room.phase = 'playing';
     room.result = null;
     this.touch(room);
     return room;
+  }
+
+  actionCacheFor(playerId) {
+    if (!this.actionResults.has(playerId)) this.actionResults.set(playerId, new Map());
+    return this.actionResults.get(playerId);
+  }
+
+  rememberAction(playerId, key, value) {
+    const cache = this.actionCacheFor(playerId);
+    cache.set(key, value);
+    while (cache.size > 256) cache.delete(cache.keys().next().value);
+  }
+
+  applyGameAction(playerId, message) {
+    const room = this.requireRoom(message.roomCode);
+    const cacheKey = `${message.handId}:${message.actionId}`;
+    const fingerprint = JSON.stringify(message.action);
+    const prior = this.actionCacheFor(playerId).get(cacheKey);
+    if (prior) {
+      if (prior.fingerprint !== fingerprint) throw roomError('ACTION_ID_CONFLICT');
+      return prior.result;
+    }
+    if (message.handId !== room.handId) throw roomError('STALE_HAND');
+    if (message.revision !== room.revision) throw roomError('STALE_REVISION');
+    if (room.phase !== 'playing' || !room.game) throw roomError('GAME_NOT_IN_PROGRESS');
+    if (room.game.snapshot().actorId !== playerId) throw roomError('NOT_YOUR_TURN');
+
+    const event = room.game.dispatch(playerId, message.action);
+    if (room.game.phase === 'results') {
+      room.phase = 'results';
+      room.result = room.game.matchStatus.summary;
+    }
+    this.touch(room);
+    const result = { event, revision: room.revision, handId: room.handId };
+    this.rememberAction(playerId, cacheKey, { fingerprint, result });
+    return result;
+  }
+
+  startNextHand(code) {
+    const room = this.requireRoom(code);
+    if (!room.game || room.phase !== 'playing' || room.game.phase !== 'betweenHands') {
+      throw roomError('NEXT_HAND_NOT_AVAILABLE');
+    }
+    room.game.startNextHand();
+    room.handId = `${room.code}_m${room.matchNumber}_h${room.game.handNumber}`;
+    this.touch(room);
+    return room;
+  }
+
+  applyTimeout(code) {
+    const room = this.requireRoom(code);
+    if (!room.game || room.phase !== 'playing') throw roomError('GAME_NOT_IN_PROGRESS');
+    const playerId = room.game.snapshot().actorId;
+    const action = chooseTimeoutAction(room.game.legalActionsFor(playerId));
+    this.timeoutActionCounter += 1;
+    return this.applyGameAction(playerId, {
+      type: 'game.action',
+      roomCode: code,
+      handId: room.handId,
+      actionId: `timeout_${this.timeoutActionCounter}`,
+      revision: room.revision,
+      action,
+    });
   }
 
   kick(code, actorId, targetId) {
@@ -249,6 +332,7 @@ export class RoomManager {
       ?? room.spectators.find(value => value.playerId === playerId);
     if (!participant || participant.kind === 'bot') return false;
     participant.connected = false;
+    participant.disconnectedAt = at;
     const hasConnectedHuman = room.seats.some(seat => seat.kind === 'human' && seat.connected)
       || room.spectators.some(value => value.connected);
     if (!hasConnectedHuman && room.lastHumanLeftAt === null) room.lastHumanLeftAt = at;
@@ -262,9 +346,39 @@ export class RoomManager {
       ?? room.spectators.find(value => value.playerId === playerId);
     if (!participant || participant.kind === 'bot') return false;
     participant.connected = true;
+    participant.disconnectedAt = null;
     room.lastHumanLeftAt = null;
     this.touch(room);
     return true;
+  }
+
+  processDisconnectTimeouts(at = this.now()) {
+    const takeovers = [];
+    for (const room of this.rooms.values()) {
+      for (const seat of room.seats) {
+        if (seat.kind !== 'human'
+          || seat.connected
+          || seat.controller === 'bot'
+          || seat.disconnectedAt === null
+          || at - seat.disconnectedAt < this.rules.reconnectMs) continue;
+        seat.controller = 'bot';
+        takeovers.push({ roomCode: room.code, playerId: seat.playerId });
+        if (room.hostPlayerId === seat.playerId) room.hostPlayerId = this.selectNextHost(room);
+        this.touch(room);
+      }
+    }
+    return takeovers;
+  }
+
+  restoreHumanControl(code, playerId) {
+    const room = this.requireRoom(code);
+    const seat = room.seats.find(value => value.playerId === playerId && value.kind === 'human');
+    if (!seat) throw roomError('PLAYER_NOT_FOUND');
+    seat.controller = 'human';
+    seat.connected = true;
+    seat.disconnectedAt = null;
+    this.touch(room);
+    return seat;
   }
 
   selectNextHost(room) {

@@ -94,6 +94,18 @@ describe('projectRoom', () => {
     expect(projectRoom(room(), spectator()).game.legalActions).toBeNull();
   });
 
+  it('exposes connection and bot-takeover state without changing seat ownership', () => {
+    const disconnectedRoom = room();
+    Object.assign(disconnectedRoom.seats[0], { connected: false, controller: 'bot' });
+
+    expect(projectRoom(disconnectedRoom, player('hero')).seats[0]).toMatchObject({
+      playerId: 'hero',
+      kind: 'human',
+      connected: false,
+      controller: 'bot',
+    });
+  });
+
   it('returns an outbound envelope with the room revision', () => {
     expect(createRoomStateEnvelope(room(), player('hero'))).toMatchObject({
       type: 'room.state',
