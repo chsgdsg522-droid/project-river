@@ -1,14 +1,13 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { DEFAULT_RULES, MAX_ROOM_CODE_ATTEMPTS, ROOM_CODE_ALPHABET } from './config.js';
 import { Game } from './game/Game.js';
+import { PERSONAS } from './bots/personas.js';
 
-export const DEFAULT_BOTS = Object.freeze([
-  { personaId: 'songguo', displayName: '松果', avatarId: 'river-fox' },
-  { personaId: 'yanshu', displayName: '岩叔', avatarId: 'river-bear' },
-  { personaId: 'xiaoman', displayName: '小满', avatarId: 'river-cat' },
-  { personaId: 'ace', displayName: '阿策', avatarId: 'river-owl' },
-  { personaId: 'youyou', displayName: '悠悠', avatarId: 'river-rabbit' },
-]);
+export const DEFAULT_BOTS = Object.freeze(Object.entries(PERSONAS).map(([personaId, persona]) => ({
+  personaId,
+  displayName: persona.displayName,
+  avatarId: persona.avatarId,
+})));
 
 function defaultRoomCode() {
   return Array.from({ length: 6 }, () => ROOM_CODE_ALPHABET[randomInt(ROOM_CODE_ALPHABET.length)]).join('');
