@@ -45,6 +45,10 @@ export class SessionRegistry {
     return this.sessions.get(token)?.playerId ?? null;
   }
 
+  tokenForPlayer(playerId) {
+    return this.playerTokens.get(playerId) ?? null;
+  }
+
   attach(token, socket) {
     const session = this.require(token);
     if (session.socket && session.socket !== socket) {

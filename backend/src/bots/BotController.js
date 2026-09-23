@@ -12,11 +12,13 @@ export class BotController {
     random = secureUnitRandom,
     setTimeout: schedule = setTimeout,
     clearTimeout: cancel = clearTimeout,
+    onStateChange = () => {},
   }) {
     this.roomManager = roomManager;
     this.random = random;
     this.schedule = schedule;
     this.cancelTimer = cancel;
+    this.onStateChange = onStateChange;
     this.entries = new Map();
     this.actionCounter = 0;
   }
@@ -62,6 +64,7 @@ export class BotController {
           revision: room.revision,
           action,
         });
+        this.onStateChange(room);
         this.maybeAct(room);
       } catch (error) {
         if (!['STALE_HAND', 'STALE_REVISION', 'NOT_YOUR_TURN'].includes(error.code)) throw error;

@@ -107,10 +107,12 @@ describe('projectRoom', () => {
   });
 
   it('returns an outbound envelope with the room revision', () => {
-    expect(createRoomStateEnvelope(room(), player('hero'))).toMatchObject({
+    const source = room();
+    source.handId = 'ABC234_m1_h3';
+    expect(createRoomStateEnvelope(source, player('hero'))).toMatchObject({
       type: 'room.state',
       revision: 9,
-      payload: { code: 'ABC234' },
+      payload: { code: 'ABC234', handId: 'ABC234_m1_h3' },
     });
   });
 

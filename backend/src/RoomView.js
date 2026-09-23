@@ -67,6 +67,7 @@ export function projectRoom(room, recipient) {
   if (!snapshot) {
     return {
       code: room.code,
+      handId: room.handId ?? null,
       phase: room.phase,
       mode: room.mode,
       hostPlayerId: room.hostPlayerId,
@@ -91,6 +92,7 @@ export function projectRoom(room, recipient) {
 
   return {
     code: room.code,
+    handId: room.handId ?? null,
     phase: room.phase,
     mode: room.mode,
     hostPlayerId: room.hostPlayerId,

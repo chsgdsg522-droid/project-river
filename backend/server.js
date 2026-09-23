@@ -1,196 +1,24 @@
-// backend/server.js
-import express from 'express';
-import { WebSocketServer } from 'ws';
-import http from 'http';
-import https from 'https';
-import fs from 'fs';
-import cors from 'cors';
-import { LobbyManager } from './LobbyManager.js';
-import { ClientRegistry } from './ClientRegistry.js';
-import { createMessageRouter } from './MessageRouter.js';
-import { BroadcastScheduler } from './BroadcastScheduler.js';
-import * as timerUtils from './utils/timerUtils.js';
-import { getDealerMessage } from './src/game/dealerMessages.js';
-import { MAX_NAME_LENGTH, CHAT_HISTORY_SIZE } from './constants.js';
-import { logger } from './utils/logger.js';
+import { createServer } from './src/createServer.js';
 
-const app = express();
-app.use(cors());
+const port = Number.parseInt(process.env.PORT ?? '8080', 10);
+const server = createServer({ port, host: '0.0.0.0' });
 
-const useHttps = process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH;
-let server;
-if (useHttps) {
-  const key = fs.readFileSync(process.env.SSL_KEY_PATH);
-  const cert = fs.readFileSync(process.env.SSL_CERT_PATH);
-  server = https.createServer({ key, cert }, app);
-} else {
-  server = http.createServer(app);
-}
-
-const wss = new WebSocketServer({ server });
-
-const lobbyManager = new LobbyManager();
-const clientRegistry = new ClientRegistry();
-const generalChat = [];
-
-timerUtils.setTurnTimerRefs({ lobbyManager, clientRegistry, broadcastGameState });
-
-function broadcastGameState(lobbyId, dealerMessage = null) {
-  const lobby = lobbyManager.getLobby(lobbyId);
-  if (!lobby) return;
-  const state = lobby.game.getState();
-  if (dealerMessage) state.dealerMessage = dealerMessage;
-  const msg = JSON.stringify({ type: 'gameState', state });
-  clientRegistry.forEach((ws, client) => {
-    if (client.lobbyId === lobbyId && ws.readyState === 1) ws.send(msg);
-  });
-}
-
-function broadcastSystemMessage(lobbyId, message) {
-  const msg = JSON.stringify({ type: 'system', text: message });
-  clientRegistry.forEach((ws, client) => {
-    if (client.lobbyId === lobbyId && ws.readyState === 1) ws.send(msg);
-  });
-}
-
-function broadcastDealerMessage(lobbyId, message) {
-  if (!message) return;
-  broadcastChat(lobbyId, 'Dealer', message);
-}
-
-function broadcastChat(lobbyId, senderName, message) {
-  const chatMsg = JSON.stringify({ type: 'chat', sender: senderName, message, timestamp: Date.now() });
-  lobbyManager.addChatMessage(lobbyId, senderName, message);
-  clientRegistry.forEach((ws, client) => {
-    if (client.lobbyId === lobbyId && ws.readyState === 1) ws.send(chatMsg);
-  });
-}
-
-function broadcastGeneralChat(senderName, message) {
-  const chatMsg = JSON.stringify({ type: 'chat', sender: senderName, message, timestamp: Date.now() });
-  generalChat.push({ sender: senderName, message, timestamp: Date.now() });
-  if (generalChat.length > CHAT_HISTORY_SIZE) generalChat.shift();
-  clientRegistry.forEach((ws, client) => {
-    if (!client.lobbyId && ws.readyState === 1) ws.send(chatMsg);
-  });
-}
-
-function broadcastOnlinePlayers() {
-  const online = [];
-  clientRegistry.forEach((ws, client) => {
-    if (!client.lobbyId && ws.readyState === 1) online.push(client.name);
-  });
-  const msg = JSON.stringify({ type: 'onlinePlayers', players: online });
-  clientRegistry.forEach((ws, client) => {
-    if (!client.lobbyId && ws.readyState === 1) ws.send(msg);
-  });
-}
-
-function broadcastAchievement(lobbyId, achievement) {
-  const achMsg = JSON.stringify({ type: 'achievement', ...achievement });
-  clientRegistry.forEach((ws, client) => {
-    if (client.lobbyId === lobbyId && ws.readyState === 1) ws.send(achMsg);
-  });
-}
-
-function broadcastSideBetWin(lobbyId, bettorName, targetName, amount, profit, refunded) {
-  const winMsg = JSON.stringify({ type: 'sideBetWin', bettorName, targetName, amount, profit, refunded });
-  clientRegistry.forEach((ws, client) => {
-    if (client.lobbyId === lobbyId && ws.readyState === 1) ws.send(winMsg);
-  });
-}
-
-function broadcastAllInSound(lobbyId) {
-  const msg = JSON.stringify({ type: 'allInSound' });
-  clientRegistry.forEach((ws, client) => {
-    if (client.lobbyId === lobbyId && ws.readyState === 1) ws.send(msg);
-  });
-}
-
-function setupLobbyCallbacks(lobbyId) {
-  const lobby = lobbyManager.getLobby(lobbyId);
-  if (!lobby) return;
-  lobby.game.onStateChange = () => {
-    broadcastGameState(lobbyId);
-    timerUtils.ensureTurnTimer(lobbyId, lobbyManager, clientRegistry, broadcastGameState);
-  };
-  lobby.game._onTimerReset = () => {
-    timerUtils.removeTurnTimer(lobbyId);
-  };
-}
-
-function broadcastLobbyList() {
-  const list = lobbyManager.getLobbyList();
-  const msg = JSON.stringify({ type: 'lobbyList', lobbies: list });
-  clientRegistry.forEach((ws, client) => {
-    if (!client.lobbyId && ws.readyState === 1) ws.send(msg);
-  });
-}
-
-const messageRouter = createMessageRouter({
-  lobbyManager,
-  clientRegistry,
-  broadcastGameState,
-  broadcastSystemMessage,
-  broadcastChat,
-  broadcastGeneralChat,
-  broadcastOnlinePlayers,
-  broadcastLobbyList,
-  broadcastAchievement,
-  broadcastSideBetWin,
-  broadcastAllInSound,
-  setupLobbyCallbacks,
-  generalChat,
-  timerUtils,
-  MAX_NAME_LENGTH,
-  CHAT_HISTORY_SIZE,
-  broadcastDealerMessage,
-  getDealerMessage,
-});
-
-const scheduler = new BroadcastScheduler(lobbyManager, clientRegistry, {
-  broadcastGameState,
-  broadcastChat,
-  broadcastSystemMessage,
-  broadcastAchievement,
-  broadcastSideBetWin,
-  broadcastLobbyList,
-  broadcastOnlinePlayers,
-  broadcastDealerMessage,
-}, timerUtils);
-
-scheduler.start();
-
-wss.on('connection', (ws) => {
-  ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data);
-      messageRouter(msg, ws);
-    } catch (err) {
-      console.error('Non‑JSON message received:', data.toString().slice(0, 80));
-    }
+server.start()
+  .then(({ url }) => {
+    process.stdout.write(`Project River server listening at ${url}\n`);
+  })
+  .catch(error => {
+    process.stderr.write(`Failed to start Project River server: ${error.message}\n`);
+    process.exitCode = 1;
   });
 
-  ws.on('close', () => {
-    const client = clientRegistry.get(ws);
-    if (client) {
-      if (client.lobbyId) {
-        lobbyManager.leaveLobby(client.lobbyId, client.playerId);
-        broadcastGameState(client.lobbyId);
-        const msg = getDealerMessage('playerLeft', { name: client.name || 'A player' });
-        broadcastDealerMessage(client.lobbyId, msg);
-        timerUtils.clearAllTimers(client.lobbyId, clientRegistry);
-      }
-      timerUtils.clearTimer(ws, clientRegistry);
-      clientRegistry.remove(ws);
-      broadcastLobbyList();
-      broadcastOnlinePlayers();
-    }
-  });
-});
+async function shutdown() {
+  try {
+    await server.stop();
+  } finally {
+    process.exit(0);
+  }
+}
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  const protocol = useHttps ? 'wss' : 'ws';
-  console.log(`Poker server running on ${protocol}://0.0.0.0:${PORT}`);
-});
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
