@@ -36,7 +36,8 @@ function Shell({ socket }) {
   const { preferences, profile, addMatch } = useApp();
 
   useEffect(() => socket.subscribe(message => {
-    if (message.type === 'client.status') setConnectionState(message.payload.status);
+    // An open transport is not yet a restored room. Wait for its fresh snapshot.
+    if (message.type === 'client.status') setConnectionState(message.payload.status === 'connected' ? 'syncing' : message.payload.status);
     else if (message.type === 'client.error' || message.type === 'game.error') {
       setErrorCode(message.payload.code);
       if (['ROOM_NOT_FOUND', 'SESSION_NOT_FOUND', 'SESSION_REPLACED'].includes(message.payload.code)) {
@@ -47,6 +48,7 @@ function Shell({ socket }) {
     } else if (message.type === 'server.notice') setNotice(message.payload.code);
     else if (message.type === 'quickChat.event') setChatEvent(message.payload);
     else if (message.type === 'room.state') {
+      setConnectionState('connected');
       setErrorCode(null);
       setRoom({ ...message.payload, revision: message.revision });
       const code = message.payload.code;
@@ -110,9 +112,9 @@ function Shell({ socket }) {
       <Routes location={location}>
         <Route path="/" element={<HomePage socket={socket} errorCode={errorCode} />} />
         <Route path="/room/:code" element={room ? <RoomPage room={room} socket={socket} connectionState={connectionState} notice={notice} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
-        <Route path="/game/:code" element={room ? <GamePage room={room} socket={socket} muted={preferences.muted} chatEvent={chatEvent} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
+        <Route path="/game/:code" element={room ? <GamePage room={room} socket={socket} muted={preferences.muted} chatEvent={chatEvent} connectionState={connectionState} errorCode={errorCode} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
         <Route path="/tutorial" element={<TutorialPage onFinish={() => navigate('/practice')} />} />
-        <Route path="/practice" element={profile ? <PracticePage room={room?.mode === 'practice' ? room : null} socket={socket} profile={profile} muted={preferences.muted} chatEvent={chatEvent} /> : <HomePage socket={socket} errorCode={errorCode} />} />
+        <Route path="/practice" element={profile ? <PracticePage room={room?.mode === 'practice' ? room : null} socket={socket} profile={profile} muted={preferences.muted} chatEvent={chatEvent} connectionState={connectionState} errorCode={errorCode} /> : <HomePage socket={socket} errorCode={errorCode} />} />
         <Route path="/results/:code" element={room ? <ResultsPage summary={summary} selfId={room?.self?.playerId} isHost={room?.hostPlayerId === room?.self?.playerId} onRecord={addMatch} onRematch={() => socket.request({ type: 'match.rematch', roomCode: room.code })} onHome={returnHome} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
         <Route path="*" element={<Placeholder title="找不到页面" description="返回首页重新开始。" />} />
       </Routes>

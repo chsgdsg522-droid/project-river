@@ -7,7 +7,7 @@ export default defineConfig({
   retries: 1,
   webServer: [
     {
-      command: 'npm run dev:backend',
+      command: 'npm run start -w backend',
       url: 'http://127.0.0.1:8080/health',
       reuseExistingServer: true,
       timeout: 30_000,

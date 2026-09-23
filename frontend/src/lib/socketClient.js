@@ -20,8 +20,8 @@ export class SocketClient {
   constructor({
     url = defaultUrl(),
     WebSocketImpl = globalThis.WebSocket,
-    setTimeout: schedule = globalThis.setTimeout,
-    clearTimeout: cancel = globalThis.clearTimeout,
+    setTimeout: schedule = globalThis.setTimeout.bind(globalThis),
+    clearTimeout: cancel = globalThis.clearTimeout.bind(globalThis),
   } = {}) {
     this.url = url;
     this.WebSocketImpl = WebSocketImpl;

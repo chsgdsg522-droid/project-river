@@ -66,6 +66,24 @@ function setup() {
 }
 
 describe('server session lifecycle', () => {
+  it('returns a fresh recipient-safe snapshot before rejecting a stale action without restarting the clock', () => {
+    const game = setup();
+    const guest = game.twoPlayers();
+    const deadline = game.room.actionDeadline;
+    game.elapse(1_000);
+    const start = game.host.messages.length;
+    game.host.request({ type: 'game.action', roomCode: game.room.code, handId: game.room.handId,
+      revision: game.room.revision - 1, actionId: 'action_stale_001', action: { type: 'call' } });
+    const reply = game.host.messages.slice(start);
+    expect(reply.map(message => message.type)).toEqual(['room.state', 'game.error']);
+    expect(reply[0].revision).toBe(game.room.revision);
+    const guestId = guest.last('session.ready').payload.playerId;
+    expect(reply[0].payload.game.players[game.session.playerId].holeCards).toHaveLength(2);
+    expect(reply[0].payload.game.players[guestId]).not.toHaveProperty('holeCards');
+    expect(reply[1].payload.code).toBe('STALE_REVISION');
+    expect(game.room.actionDeadline).toBe(deadline);
+  });
+
   it('does not let a bound connection switch to another player token', () => {
     const game = setup();
     const guest = game.twoPlayers();

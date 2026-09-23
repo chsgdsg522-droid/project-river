@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LearningPanel } from '../components/learning/LearningPanel.jsx';
 import { GamePage } from './GamePage.jsx';
 
-export function PracticePage({ room, socket, profile, muted = false, chatEvent = null }) {
+export function PracticePage({ room, socket, profile, muted = false, chatEvent = null, connectionState = 'connected', errorCode = null }) {
   const [showLearning, setShowLearning] = useState(false);
   const requested = useRef(false);
 
@@ -21,7 +21,7 @@ export function PracticePage({ room, socket, profile, muted = false, chatEvent =
   const self = room.game?.players?.[room.self?.playerId];
   return (
     <>
-      <GamePage room={room} socket={socket} muted={muted} chatEvent={chatEvent} />
+      <GamePage room={room} socket={socket} muted={muted} chatEvent={chatEvent} connectionState={connectionState} errorCode={errorCode} />
       <label className="learning-toggle">
         <input type="checkbox" role="switch" checked={showLearning} onChange={event => setShowLearning(event.target.checked)} />
         <span>显示学习辅助</span>

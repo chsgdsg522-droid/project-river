@@ -12,7 +12,7 @@ Player identity, display preferences, and aggregate match totals stay in that br
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 20.19+, 22.12+, or 24+ (matching the Vite/Vitest supported versions)
 - npm 10 or newer
 
 ## Install

@@ -87,15 +87,19 @@ export function createServer({
     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
   }
 
+  function sendRoomState(socket, room, context) {
+    if (room.seats.some(seat => seat.playerId === context.playerId)) context.role = 'player';
+    safeSend(socket, createRoomStateEnvelope(room, {
+      playerId: context.playerId,
+      role: context.role,
+      canAct: sessions.activeController(context.playerId) !== 'bot',
+    }));
+  }
+
   function broadcastRoom(room) {
     for (const [socket, context] of contexts) {
       if (context.roomCode !== room.code || socket.readyState !== WebSocket.OPEN) continue;
-      if (room.seats.some(seat => seat.playerId === context.playerId)) context.role = 'player';
-      safeSend(socket, createRoomStateEnvelope(room, {
-        playerId: context.playerId,
-        role: context.role,
-        canAct: sessions.activeController(context.playerId) !== 'bot',
-      }));
+      sendRoomState(socket, room, context);
     }
   }
 
@@ -297,6 +301,14 @@ export function createServer({
       log('message', { roomHash: roomHash(room.code), messageType: message.type, durationMs: now() - startedAt });
     } catch (error) {
       const code = error instanceof ProtocolError ? error.code : error.code ?? error.message ?? 'UNKNOWN_ERROR';
+      const context = contexts.get(socket);
+      // Resync only the authenticated recipient, never the requested room or a
+      // replaced socket. Do not mutate game state or restart its action clock.
+      if (context && sessions.playerForToken(context.token) === context.playerId
+        && sessions.require(context.token).socket === socket) {
+        const room = rooms.getRoom(context.roomCode);
+        if (room) sendRoomState(socket, room, context);
+      }
       safeSend(socket, createEnvelope('game.error', 0, { code }));
       log('message_error', { errorCode: code, durationMs: now() - startedAt });
     }

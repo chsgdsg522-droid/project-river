@@ -42,6 +42,41 @@ function fakeSocket() {
 }
 
 describe('GamePage', () => {
+  it('blocks actions and chat during reconnect, closes betting, then unlocks on a fresh same-revision snapshot', async () => {
+    const socket = fakeSocket();
+    const room = gameRoomFixture();
+    const { rerender } = render(<GamePage room={room} socket={socket} />);
+    await userEvent.click(screen.getByRole('button', { name: '下注 Bet' }));
+    expect(screen.getByRole('dialog')).toBeVisible();
+    rerender(<GamePage room={room} socket={socket} connectionState="reconnecting" />);
+    expect(screen.getByRole('status')).toHaveTextContent('正在重新连接');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '过牌 Check' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '快捷消息 你好' })).toBeDisabled();
+    await userEvent.keyboard('c');
+    expect(socket.sent).toEqual([]);
+    rerender(<GamePage room={room} socket={socket} connectionState="syncing" />);
+    expect(screen.getByRole('button', { name: '过牌 Check' })).toBeDisabled();
+    rerender(<GamePage room={{ ...room }} socket={socket} connectionState="connected" />);
+    await userEvent.click(screen.getByRole('button', { name: '过牌 Check' }));
+    expect(socket.sent).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '过牌 Check' })).toBeDisabled();
+    rerender(<GamePage room={{ ...room }} socket={socket} errorCode="STALE_REVISION" />);
+    expect(screen.getByRole('button', { name: '过牌 Check' })).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('牌局已更新');
+  });
+
+  it('handles a transport closing between render and click without leaving a pending action', async () => {
+    const socket = { nextActionId: () => 'action_race_001', request() { throw new Error('SOCKET_NOT_CONNECTED'); } };
+    const room = gameRoomFixture();
+    const { rerender } = render(<GamePage room={room} socket={socket} />);
+    await userEvent.click(screen.getByRole('button', { name: '过牌 Check' }));
+    expect(screen.getByRole('status')).toHaveTextContent('正在重新连接');
+    expect(screen.getByRole('button', { name: '过牌 Check' })).toBeDisabled();
+    rerender(<GamePage room={{ ...room }} socket={fakeSocket()} />);
+    expect(screen.getByRole('button', { name: '过牌 Check' })).toBeEnabled();
+  });
+
   it('shows only the recipient cards and emits one server-shaped action', async () => {
     const socket = fakeSocket();
     render(<GamePage room={gameRoomFixture()} socket={socket} />);

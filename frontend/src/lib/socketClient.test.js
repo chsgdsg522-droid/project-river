@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SocketClient } from './socketClient.js';
 
 class MockWebSocket {
@@ -38,6 +38,25 @@ class MockWebSocket {
 }
 
 describe('SocketClient', () => {
+  it('calls browser timers with their global receiver when scheduling and cancelling reconnect', async () => {
+    let scheduledWith;
+    let cancelledWith;
+    vi.stubGlobal('setTimeout', function () { scheduledWith = this; return 42; });
+    vi.stubGlobal('clearTimeout', function () { cancelledWith = this; });
+    try {
+      const client = new SocketClient({ url: 'ws://river.test', WebSocketImpl: MockWebSocket });
+      const connecting = client.resume('resume_token_that_is_long_enough');
+      MockWebSocket.latest.open();
+      await connecting;
+      MockWebSocket.latest.close();
+      expect(scheduledWith).toBe(globalThis);
+      client.close();
+      expect(cancelledWith).toBe(globalThis);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('resumes once after opening and keeps the token in memory', async () => {
     const client = new SocketClient({ url: 'ws://river.test', WebSocketImpl: MockWebSocket });
     const pending = client.resume('resume_token_that_is_long_enough');

@@ -14,6 +14,8 @@ export function ActionDock({ legal, pot = 0, streetCommitment = 0, callTo = stre
   const amountAction = legal?.bet ? 'bet' : legal?.raise ? 'raise' : null;
   const limits = amountAction ? legal[amountAction] : null;
 
+  useEffect(() => { if (disabled) setRaiseOpen(false); }, [disabled]);
+
   useEffect(() => {
     function keydown(event) {
       if (disabled || !legal || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -39,7 +41,7 @@ export function ActionDock({ legal, pot = 0, streetCommitment = 0, callTo = stre
           : legal.callAmount !== null && <button type="button" disabled={disabled} aria-label={`跟注 Call ${legal.callAmount}`} onClick={() => onAction({ type: 'call' })}><Term id="call" /> <strong>{legal.callAmount}</strong></button>}
         {amountAction && <button type="button" disabled={disabled} onClick={() => setRaiseOpen(true)}><Term id={amountAction} /></button>}
       </div>
-      {raiseOpen && limits && (
+      {raiseOpen && limits && !disabled && (
         <RaiseSheet
           actionType={amountAction}
           pot={pot}

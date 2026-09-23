@@ -16,7 +16,9 @@ Status date: 2026-09-23. “Automated” means covered by the checked-in unit, i
 - [x] Regression — invitation URL onboarding, new room after leaving, and first-use practice.
 - [x] Regression — replaced sockets cannot disconnect current players; spectators resume and receive player controls after promotion.
 - [x] Regression — short all-in raises do not reopen action, and all-in cannot bypass closed raising rights.
-- [ ] Acceptance pending — complete a mixed table of two humans and four bots across ten hands with an actual network interruption.
+- [x] Browser — two humans and four bots complete ten hands after forced closure of the real server WebSocket; a fresh resume handshake preserves identity/cards and total chips. See `e2e/mixed-reconnect.spec.js`.
+- [x] Regression — reconnect timers retain the browser receiver; gameplay/chat remain disabled until a fresh snapshot, and rejected actions resync without restarting the deadline.
+- [ ] Physical-network acceptance pending — repeat on actual devices with Wi-Fi loss and longer outages; the automated WebSocket-close scenario is not a physical network test.
 
 ## Learning and interface
 
@@ -29,6 +31,7 @@ Status date: 2026-09-23. “Automated” means covered by the checked-in unit, i
 - [x] Browser — Chromium, WebKit, and Firefox automated projects pass.
 - [ ] Manual pending — current Chrome, Safari, Edge, and Firefox desktop checklist; see `docs/TESTING.md`.
 - [ ] Learning accuracy pending — the current practice percentage is a simple visible-card heuristic, not validated poker equity; replace or validate it before presenting it as win probability.
+- [ ] Follow-up — extend disconnected-control guards to lobby host settings and results rematch; this pass guards in-game betting/chat only.
 
 ## Privacy, scope, and open source
 
@@ -37,5 +40,5 @@ Status date: 2026-09-23. “Automated” means covered by the checked-in unit, i
 - [x] Documentation — browser-local aggregates, in-memory room loss on restart, telemetry allowlist, and prohibited fields are documented.
 - [x] Product copy — virtual chips only; no recharge, withdrawal, or real-world reward.
 - [x] License — MIT `LICENSE` and upstream attribution in `NOTICE.md` retained.
-- [x] Dependency audit — no high or critical production finding. Two moderate React Router advisories remain because the available fix requires a breaking v7 migration; the app accepts only validated room codes and uses no SSR hydration.
+- [x] Dependency audit — clean `npm ci`, full `npm audit`, and `npm audit --omit=dev` report zero known vulnerabilities on 2026-09-23. Patched Vite 7.3.6, Vitest 4.1.11, React Router 7.18.4, and React plugin 5.2.0 are locked; React remains on v18.
 - [x] Deployment — intentionally not performed.
