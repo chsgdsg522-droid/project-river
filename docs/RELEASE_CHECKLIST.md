@@ -13,6 +13,10 @@ Status date: 2026-09-23. “Automated” means covered by the checked-in unit, i
 - [x] Automated — empty-room cleanup after 30 minutes and host transfer to the earliest connected human.
 - [x] Automated — duplicate action ID is idempotent and conflicting reuse is rejected.
 - [x] Browser — two players finish ten hands and the host starts a rematch without reloading.
+- [x] Regression — invitation URL onboarding, new room after leaving, and first-use practice.
+- [x] Regression — replaced sockets cannot disconnect current players; spectators resume and receive player controls after promotion.
+- [x] Regression — short all-in raises do not reopen action, and all-in cannot bypass closed raising rights.
+- [ ] Acceptance pending — complete a mixed table of two humans and four bots across ten hands with an actual network interruption.
 
 ## Learning and interface
 
@@ -24,6 +28,7 @@ Status date: 2026-09-23. “Automated” means covered by the checked-in unit, i
 - [x] Browser — spectator has no action controls.
 - [x] Browser — Chromium, WebKit, and Firefox automated projects pass.
 - [ ] Manual pending — current Chrome, Safari, Edge, and Firefox desktop checklist; see `docs/TESTING.md`.
+- [ ] Learning accuracy pending — the current practice percentage is a simple visible-card heuristic, not validated poker equity; replace or validate it before presenting it as win probability.
 
 ## Privacy, scope, and open source
 

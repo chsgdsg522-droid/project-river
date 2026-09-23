@@ -54,6 +54,8 @@ export class BotController {
         || room.handId !== handId
         || room.game?.snapshot().actorId !== actorId) return;
       this.entries.delete(room.code);
+      const currentSeat = room.seats.find(value => value.playerId === actorId);
+      if (currentSeat?.kind !== 'bot' && currentSeat?.controller !== 'bot') return;
       this.actionCounter += 1;
       try {
         this.roomManager.applyGameAction(actorId, {

@@ -55,8 +55,11 @@ export class SocketClient {
     this.emit({ type: 'client.status', payload: { status: this.reconnectAttempt ? 'reconnecting' : 'connecting' } });
     this.connectPromise = new Promise((resolve, reject) => {
       const socket = new this.WebSocketImpl(this.url);
+      let opened = false;
       this.socket = socket;
       socket.addEventListener('open', () => {
+        if (this.socket !== socket) return;
+        opened = true;
         this.connectPromise = null;
         this.reconnectAttempt = 0;
         this.emit({ type: 'client.status', payload: { status: 'connected' } });
@@ -64,6 +67,7 @@ export class SocketClient {
         resolve();
       }, { once: true });
       socket.addEventListener('message', event => {
+        if (this.socket !== socket) return;
         try {
           const message = JSON.parse(event.data);
           if (message.type === 'session.ready') {
@@ -76,13 +80,19 @@ export class SocketClient {
         }
       });
       socket.addEventListener('error', () => {
+        if (this.socket !== socket) return;
         this.emit({ type: 'client.error', payload: { code: 'CONNECTION_FAILED' } });
       });
-      socket.addEventListener('close', () => {
-        const wasConnecting = Boolean(this.connectPromise);
+      socket.addEventListener('close', event => {
+        if (!opened) reject(new Error('CONNECTION_CLOSED'));
+        if (this.socket !== socket) return;
         this.connectPromise = null;
         this.socket = null;
-        if (wasConnecting) reject(new Error('CONNECTION_CLOSED'));
+        if (event.code === 4001) {
+          this.close();
+          this.emit({ type: 'client.error', payload: { code: 'SESSION_REPLACED' } });
+          return;
+        }
         if (!this.closedByUser) this.queueReconnect();
       });
     });
@@ -123,9 +133,13 @@ export class SocketClient {
     this.closedByUser = true;
     if (this.reconnectTimer !== null) this.cancel(this.reconnectTimer);
     this.reconnectTimer = null;
-    this.socket?.close();
+    const socket = this.socket;
     this.socket = null;
     this.connectPromise = null;
+    this.token = null;
+    this.playerId = null;
+    this.reconnectAttempt = 0;
+    socket?.close();
     this.emit({ type: 'client.status', payload: { status: 'closed' } });
   }
 }

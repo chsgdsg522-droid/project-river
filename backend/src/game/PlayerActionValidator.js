@@ -50,7 +50,7 @@ export function getLegalActions(state, playerId) {
     raise: state.currentBet > 0 && state.raisingOpenFor.has(playerId) && maxTo > state.currentBet
       ? { minTo: Math.min(minTo, maxTo), maxTo, reopened: maxTo >= minTo }
       : null,
-    allInTo: maxTo,
+    allInTo: maxTo <= state.currentBet || state.raisingOpenFor.has(playerId) ? maxTo : null,
   };
 }
 
@@ -102,10 +102,16 @@ export function applyAction(state, playerId, action) {
     const previousBet = next.currentBet;
     amount = invest(player, action.raiseTo);
     next.currentBet = action.raiseTo;
-    next.lastFullRaise = action.raiseTo - previousBet;
-    fullRaise = true;
-    reopenAfterFullRaise(next, playerId);
+    const raiseSize = action.raiseTo - previousBet;
+    fullRaise = previousBet === 0 ? raiseSize >= next.bigBlind : raiseSize >= next.lastFullRaise;
+    if (fullRaise) {
+      next.lastFullRaise = raiseSize;
+      reopenAfterFullRaise(next, playerId);
+    } else {
+      closeAction(next, playerId);
+    }
   } else if (action.type === 'allIn') {
+    if (legal.allInTo === null) throw new GameRuleError('RAISE_NOT_AVAILABLE');
     const target = legal.allInTo;
     const previousBet = next.currentBet;
     amount = invest(player, target);

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { socketClient } from '../lib/socketClient.js';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { parseRoomCode, socketClient } from '../lib/socketClient.js';
 import { GamePage } from '../pages/GamePage.jsx';
 import { HomePage } from '../pages/HomePage.jsx';
 import { PracticePage } from '../pages/PracticePage.jsx';
@@ -19,8 +19,14 @@ function Placeholder({ title, description }) {
   );
 }
 
+function JoinEntry({ socket, errorCode }) {
+  const { code } = useParams();
+  return <HomePage key={code} socket={socket} errorCode={errorCode} initialRoomCode={parseRoomCode(code) ?? ''} />;
+}
+
 function Shell({ socket }) {
   const location = useLocation();
+  const previousPath = useRef(location.pathname);
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [errorCode, setErrorCode] = useState(null);
@@ -33,16 +39,20 @@ function Shell({ socket }) {
     if (message.type === 'client.status') setConnectionState(message.payload.status);
     else if (message.type === 'client.error' || message.type === 'game.error') {
       setErrorCode(message.payload.code);
-      if (message.payload.code === 'ROOM_NOT_FOUND') navigate('/');
+      if (['ROOM_NOT_FOUND', 'SESSION_NOT_FOUND', 'SESSION_REPLACED'].includes(message.payload.code)) {
+        socket.close();
+        setRoom(null);
+        navigate('/');
+      }
     } else if (message.type === 'server.notice') setNotice(message.payload.code);
     else if (message.type === 'quickChat.event') setChatEvent(message.payload);
     else if (message.type === 'room.state') {
       setErrorCode(null);
       setRoom({ ...message.payload, revision: message.revision });
       const code = message.payload.code;
-      if (message.payload.phase === 'waiting') navigate(`/room/${code}`);
-      else if (message.payload.phase === 'playing') navigate(message.payload.mode === 'practice' ? '/practice' : `/game/${code}`);
-      else if (message.payload.phase === 'results') navigate(`/results/${code}`);
+      if (message.payload.phase === 'waiting') navigate(`/room/${code}`, { replace: true });
+      else if (message.payload.phase === 'playing') navigate(message.payload.mode === 'practice' ? '/practice' : `/game/${code}`, { replace: true });
+      else if (message.payload.phase === 'results') navigate(`/results/${code}`, { replace: true });
     }
   }), [navigate, socket]);
 
@@ -52,9 +62,27 @@ function Shell({ socket }) {
     return () => clearTimeout(timer);
   }, [chatEvent]);
 
-  function returnHome() {
+  // Navigating away (including browser history) explicitly abandons the
+  // memory-only session; later broadcasts must not pull the player back.
+  useEffect(() => {
+    const changedPath = previousPath.current !== location.pathname;
+    previousPath.current = location.pathname;
+    if (!changedPath || !room) return;
+    const roomPaths = [`/room/${room.code}`, `/game/${room.code}`, `/results/${room.code}`];
+    if (room.mode === 'practice') roomPaths.push('/practice');
+    if (!roomPaths.includes(location.pathname)) leaveRoom();
+  }, [location.pathname, room, socket]);
+
+  function leaveRoom() {
+    socket.close();
     setRoom(null);
     setChatEvent(null);
+    setNotice(null);
+    setErrorCode(null);
+  }
+
+  function returnHome() {
+    leaveRoom();
     navigate('/');
   }
 
@@ -70,22 +98,22 @@ function Shell({ socket }) {
   return (
     <div className="app-shell">
       <header className="shell-header">
-        <NavLink className="wordmark" to="/" aria-label="Project River 首页">
+        <NavLink className="wordmark" to="/" aria-label="Project River 首页" onClick={leaveRoom}>
           <span aria-hidden="true">R</span>
           <strong>Project River</strong>
         </NavLink>
         <nav aria-label="主导航">
-          <NavLink to="/tutorial">规则速学</NavLink>
-          <NavLink to="/practice">练习桌</NavLink>
+          <NavLink to="/tutorial" onClick={leaveRoom}>规则速学</NavLink>
+          <NavLink to="/practice" onClick={() => { if (room?.mode !== 'practice') leaveRoom(); }}>练习桌</NavLink>
         </nav>
       </header>
       <Routes location={location}>
         <Route path="/" element={<HomePage socket={socket} errorCode={errorCode} />} />
-        <Route path="/room/:code" element={<RoomPage room={room} socket={socket} connectionState={connectionState} notice={notice} />} />
-        <Route path="/game/:code" element={room ? <GamePage room={room} socket={socket} muted={preferences.muted} chatEvent={chatEvent} /> : <Placeholder title="正在恢复牌局" description="等待服务器同步安全牌桌状态。" />} />
+        <Route path="/room/:code" element={room ? <RoomPage room={room} socket={socket} connectionState={connectionState} notice={notice} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
+        <Route path="/game/:code" element={room ? <GamePage room={room} socket={socket} muted={preferences.muted} chatEvent={chatEvent} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
         <Route path="/tutorial" element={<TutorialPage onFinish={() => navigate('/practice')} />} />
-        <Route path="/practice" element={<PracticePage room={room?.mode === 'practice' ? room : null} socket={socket} profile={profile} muted={preferences.muted} chatEvent={chatEvent} />} />
-        <Route path="/results/:code" element={<ResultsPage summary={summary} selfId={room?.self?.playerId} isHost={room?.hostPlayerId === room?.self?.playerId} onRecord={addMatch} onRematch={() => socket.request({ type: 'match.rematch', roomCode: room.code })} onHome={returnHome} />} />
+        <Route path="/practice" element={profile ? <PracticePage room={room?.mode === 'practice' ? room : null} socket={socket} profile={profile} muted={preferences.muted} chatEvent={chatEvent} /> : <HomePage socket={socket} errorCode={errorCode} />} />
+        <Route path="/results/:code" element={room ? <ResultsPage summary={summary} selfId={room?.self?.playerId} isHost={room?.hostPlayerId === room?.self?.playerId} onRecord={addMatch} onRematch={() => socket.request({ type: 'match.rematch', roomCode: room.code })} onHome={returnHome} /> : <JoinEntry socket={socket} errorCode={errorCode} />} />
         <Route path="*" element={<Placeholder title="找不到页面" description="返回首页重新开始。" />} />
       </Routes>
     </div>

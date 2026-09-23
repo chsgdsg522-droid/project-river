@@ -163,6 +163,7 @@ export class RoomManager {
       controller: 'human',
     });
     room.lastHumanLeftAt = null;
+    if (!room.hostPlayerId) room.hostPlayerId = this.selectNextHost(room);
     this.touch(room);
     return { room, playerId, role: 'player', seat: target.seat };
   }
@@ -354,6 +355,7 @@ export class RoomManager {
     participant.connected = true;
     participant.disconnectedAt = null;
     room.lastHumanLeftAt = null;
+    if (!room.hostPlayerId) room.hostPlayerId = this.selectNextHost(room);
     this.touch(room);
     return true;
   }

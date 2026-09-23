@@ -55,6 +55,22 @@ describe('betting round transitions', () => {
     expect(after.acted).toEqual(new Set(['c']));
   });
 
+  it('treats a short all-in entered as raiseTo identically to allIn', () => {
+    const result = applyAction(bettingState(), 'b', { type: 'raise', raiseTo: 130 });
+    expect(result.event.fullRaise).toBe(false);
+    expect(result.state.lastFullRaise).toBe(60);
+    expect(getLegalActions(result.state, 'a').raise).toBeNull();
+  });
+
+  it('rejects an all-in raise when a short raise has not reopened action', () => {
+    const short = applyAction(bettingState(), 'b', { type: 'allIn' }).state;
+    const afterCall = applyAction(short, 'c', { type: 'call' }).state;
+    expect(getLegalActions(afterCall, 'a').allInTo).toBeNull();
+    expect(() => applyAction(afterCall, 'a', { type: 'allIn' })).toThrow('RAISE_NOT_AVAILABLE');
+    expect(afterCall.players.a.stack).toBe(900);
+    expect(applyAction(afterCall, 'a', { type: 'call' }).state.players.a.stack).toBe(870);
+  });
+
   it('skips folded and all-in seats when selecting the next actor', () => {
     const before = bettingState({
       players: {

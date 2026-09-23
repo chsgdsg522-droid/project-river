@@ -121,7 +121,7 @@ export function projectRoom(room, recipient) {
       actorId: snapshot.actorId,
       currentBet: snapshot.currentBet,
       pot: snapshot.pot,
-      legalActions: recipient.role === 'player' && recipient.playerId
+      legalActions: recipient.role === 'player' && recipient.playerId && recipient.canAct !== false
         ? room.game.legalActionsFor(recipient.playerId)
         : null,
       lastHandResult: safeResult(snapshot.lastHandResult),

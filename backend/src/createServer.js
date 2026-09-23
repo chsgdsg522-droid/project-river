@@ -90,9 +90,11 @@ export function createServer({
   function broadcastRoom(room) {
     for (const [socket, context] of contexts) {
       if (context.roomCode !== room.code || socket.readyState !== WebSocket.OPEN) continue;
+      if (room.seats.some(seat => seat.playerId === context.playerId)) context.role = 'player';
       safeSend(socket, createRoomStateEnvelope(room, {
         playerId: context.playerId,
         role: context.role,
+        canAct: sessions.activeController(context.playerId) !== 'bot',
       }));
     }
   }
@@ -103,16 +105,36 @@ export function createServer({
     handTimers.delete(code);
   }
 
+  function restorePendingHumans(room) {
+    if (room.game?.phase === 'playing') return;
+    for (const seat of room.seats) {
+      if (seat.kind !== 'human' || !seat.connected) continue;
+      const token = sessions.tokenForPlayer(seat.playerId);
+      if (token && sessions.activatePendingAtBoundary(token)) rooms.restoreHumanControl(room.code, seat.playerId);
+    }
+  }
+
+  function noteBotHand(room) {
+    for (const seat of room.seats) {
+      if (seat.kind !== 'human' || seat.controller !== 'bot') continue;
+      const token = sessions.tokenForPlayer(seat.playerId);
+      if (token) sessions.noteBotStartedHand(token, room.handId);
+    }
+  }
+
   function scheduleAutomation(room) {
     turnClock.cancel(room.code);
+    bots.cancel(room.code);
     cancelHandTimer(room.code);
     room.actionDeadline = null;
+    if (room.game?.phase !== 'playing') restorePendingHumans(room);
     if (room.phase !== 'playing' || !room.game) return;
     if (room.game.phase === 'betweenHands') {
       const timeoutId = schedule(() => {
         handTimers.delete(room.code);
         try {
           rooms.startNextHand(room.code);
+          noteBotHand(room);
           scheduleAutomation(room);
           broadcastRoom(room);
         } catch (error) {
@@ -169,6 +191,7 @@ export function createServer({
   function contextFor(socket) {
     const context = contexts.get(socket);
     if (!context) throw codedError('SESSION_REQUIRED');
+    if (sessions.require(context.token).socket !== socket) throw codedError('SESSION_REPLACED');
     return context;
   }
 
@@ -193,6 +216,7 @@ export function createServer({
   }
 
   function handleMessage(socket, raw) {
+    if (socket.readyState !== WebSocket.OPEN) return;
     const startedAt = now();
     try {
       const existing = contexts.get(socket);
@@ -220,13 +244,20 @@ export function createServer({
         return;
       }
       if (message.type === 'session.resume') {
+        if (existing && existing.token !== message.token) throw codedError('SESSION_ALREADY_BOUND');
         const playerId = sessions.playerForToken(message.token);
         const found = playerId ? findRoomForPlayer(playerId) : null;
         if (!found) throw codedError('SESSION_NOT_FOUND');
+        const wasBot = sessions.activeController(playerId) === 'bot';
         sessions.attach(message.token, socket);
         const claim = sessions.claimControl(message.token, now());
+        if (claim.resumeAt === 'nextHand' && found.room.game?.phase !== 'playing') {
+          sessions.activatePendingAtBoundary(message.token);
+          claim.resumeAt = 'now';
+        }
         rooms.markConnected(found.room.code, playerId);
-        if (claim.resumeAt === 'now') rooms.restoreHumanControl(found.room.code, playerId);
+        if (claim.resumeAt === 'now' && found.role === 'player') rooms.restoreHumanControl(found.room.code, playerId);
+        if (wasBot && claim.resumeAt === 'now' && found.room.game?.actorId === playerId) scheduleAutomation(found.room);
         contexts.set(socket, { playerId, roomCode: found.room.code, role: found.role, token: message.token, messageTimes: [], lastChatAt: -Infinity });
         safeSend(socket, createEnvelope('session.ready', found.room.revision, { token: message.token, playerId, roomCode: found.room.code, role: found.role, resumeAt: claim.resumeAt }));
         broadcastRoom(found.room);
@@ -236,12 +267,22 @@ export function createServer({
       const context = contextFor(socket);
       requireSameRoom(context, message.roomCode);
       const room = rooms.requireRoom(message.roomCode);
-      if (message.type === 'room.start') rooms.startRoom(room.code, context.playerId);
+      const previousRevision = room.revision;
+      if (message.type === 'room.start') {
+        rooms.requireHost(room, context.playerId);
+        rooms.requireWaiting(room);
+        restorePendingHumans(room);
+        rooms.startRoom(room.code, context.playerId);
+        noteBotHand(room);
+      }
       else if (message.type === 'room.kick') rooms.kick(room.code, context.playerId, message.targetPlayerId);
       else if (message.type === 'room.bot.add') rooms.addBot(room.code, context.playerId, message.personaId);
       else if (message.type === 'room.bot.remove') rooms.removeBot(room.code, context.playerId, message.seat);
       else if (message.type === 'match.rematch') rooms.rematch(room.code, context.playerId);
-      else if (message.type === 'game.action') rooms.applyGameAction(context.playerId, message);
+      else if (message.type === 'game.action') {
+        if (sessions.activeController(context.playerId) !== 'human') throw codedError('HUMAN_CONTROL_PENDING');
+        rooms.applyGameAction(context.playerId, message);
+      }
       else if (message.type === 'quickChat.send') {
         if (now() - context.lastChatAt < 1_500) throw codedError('QUICK_CHAT_RATE_LIMITED');
         context.lastChatAt = now();
@@ -251,7 +292,7 @@ export function createServer({
         }
         return;
       }
-      scheduleAutomation(room);
+      if (room.revision !== previousRevision) scheduleAutomation(room);
       broadcastRoom(room);
       log('message', { roomHash: roomHash(room.code), messageType: message.type, durationMs: now() - startedAt });
     } catch (error) {
@@ -265,9 +306,9 @@ export function createServer({
     socket.on('message', raw => handleMessage(socket, raw));
     socket.on('close', () => {
       const context = contexts.get(socket);
-      sessions.disconnect(socket, now());
+      const disconnected = sessions.disconnect(socket, now());
       contexts.delete(socket);
-      if (!context) return;
+      if (!context || !disconnected) return;
       const room = rooms.getRoom(context.roomCode);
       if (!room) return;
       rooms.markDisconnected(room.code, context.playerId, now());

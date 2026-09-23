@@ -9,11 +9,15 @@ npm run check
 npm run test:e2e
 ```
 
-Playwright starts the in-memory backend and Vite frontend on loopback. The browser suite covers two isolated players completing ten hands, reconnect recovery, rematch, recipient-specific card privacy, cross-client session-token isolation, spectator restrictions, preferences, and 320/768/1440 px layouts.
+Playwright starts the in-memory backend and Vite frontend on loopback. The browser suite covers two isolated players completing ten hands, an offline/online smoke scenario, rematch, recipient-specific card privacy, cross-client session-token isolation, spectator restrictions, invitation URL onboarding, leaving and creating a new room, first-use practice, preferences, and 320/768/1440 px layouts.
+
+Pre-merge verification on 2026-09-23: `npm run check` passed **119 backend tests, 33 frontend tests, and the production build**. `npm run test:e2e -- --retries=0` passed **30 browser tests** with no retries. Existing React Router future-flag and terminal-color warnings remain non-failing.
+
+The server-handler regressions in `backend/test/sessionLifecycle.test.js` use injected time and transport to verify socket replacement, spectator resume/promotion, host recovery, same-hand bot cancellation, deferred next-hand restoration, rejected-request atomicity, and duplicate-action deadline preservation. These are deterministic integration checks, not a substitute for a real-device network-loss trial.
 
 ## Manual browser record — 2026-09-23
 
-Automated Playwright matrix: Chromium, WebKit, and Firefox **21/21 passed** on 2026-09-23. This is separate from the manual record below.
+Automated Playwright matrix: Chromium, WebKit, and Firefox **30/30 passed** on 2026-09-23. This is separate from the manual record below.
 
 | Browser | Platform | Result | Scope |
 | --- | --- | --- | --- |

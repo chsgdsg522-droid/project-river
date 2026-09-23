@@ -18,14 +18,16 @@ const ERROR_MESSAGES = Object.freeze({
   ROOM_NOT_FOUND: '没有找到这个房间，请检查房间码',
   CONNECTION_FAILED: '暂时无法连接服务器，请稍后重试',
   INVALID_DISPLAY_NAME: '昵称格式不正确',
+  SESSION_NOT_FOUND: '原牌桌会话已失效，请重新加入或创建房间',
+  SESSION_REPLACED: '牌桌已由另一连接接管，请重新加入或创建房间',
 });
 
-export function HomePage({ socket, errorCode = null }) {
+export function HomePage({ socket, errorCode = null, initialRoomCode = '' }) {
   const navigate = useNavigate();
   const { profile, preferences, updateProfile, updatePreferences } = useApp();
   const [nickname, setNickname] = useState(profile?.nickname ?? '');
   const [avatarId, setAvatarId] = useState(profile?.avatarId ?? AVATAR_IDS[0]);
-  const [roomInput, setRoomInput] = useState('');
+  const [roomInput, setRoomInput] = useState(initialRoomCode);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(null);
 

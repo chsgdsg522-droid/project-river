@@ -49,6 +49,8 @@ The optional anonymous telemetry endpoint accepts only allowlisted error/perform
 
 This MVP is intentionally ephemeral: restarting the backend loses all rooms and active matches. It is not configured for production hosting, durable storage, authentication, moderation, or money movement.
 
+Live-session tokens are held only in page memory. Temporary transport loss can resume that session; refreshing or leaving the page abandons it. A refreshed invitation/game link offers rejoining, which may enter as a spectator during a match. The optional practice percentage is an unvalidated visible-card heuristic, not an actual win-probability calculation. Remaining release acceptance is tracked in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+
 ## Open-source origin
 
 Project River is derived from the MIT-licensed [Elite Poker](https://github.com/opadips/Elite-Poker) project. See [NOTICE.md](NOTICE.md) and [LICENSE](LICENSE) for attribution and license details.
