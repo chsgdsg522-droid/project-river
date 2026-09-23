@@ -1,19 +1,37 @@
-export class Deck {
-  constructor() {
-    this.cards = [];
-    const suits = ['♠', '♥', '♦', '♣'];
-    const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-    for (let s of suits)
-      for (let r of ranks)
-        this.cards.push({ rank: r, suit: s });
-    this.shuffle();
-  }
-  shuffle() {
-    for (let i = this.cards.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+import { secureRandomInt } from './random.js';
+
+export const RANKS = Object.freeze(['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']);
+export const SUITS = Object.freeze(['clubs', 'diamonds', 'hearts', 'spades']);
+
+export function createDeck() {
+  return SUITS.flatMap(suit => RANKS.map(rank => ({ rank, suit })));
+}
+
+export function shuffle(input, randomInt = secureRandomInt) {
+  const cards = [...input];
+
+  for (let index = cards.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    if (!Number.isSafeInteger(swapIndex) || swapIndex < 0 || swapIndex > index) {
+      throw new RangeError(`Random index ${swapIndex} is outside 0..${index}`);
     }
+    [cards[index], cards[swapIndex]] = [cards[swapIndex], cards[index]];
   }
+
+  return cards;
+}
+
+export class Deck {
+  constructor({ randomInt = secureRandomInt } = {}) {
+    this.randomInt = randomInt;
+    this.cards = shuffle(createDeck(), this.randomInt);
+  }
+
+  shuffle() {
+    this.cards = shuffle(this.cards, this.randomInt);
+    return this.cards;
+  }
+
   draw() {
     return this.cards.pop();
   }
