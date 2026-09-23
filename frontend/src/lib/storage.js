@@ -15,7 +15,8 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   reducedMotion: false,
 });
 
-const DEFAULT_STATISTICS = Object.freeze({ matches: 0, wins: 0 });
+const DEFAULT_STATISTICS = Object.freeze({ matches: 0, wins: 0, handsWon: 0, biggestPot: 0 });
+const recordedMatchIds = new Set();
 const NICKNAME_PATTERN = /^[\p{Script=Han}A-Za-z0-9 _-]+$/u;
 
 function defaultState() {
@@ -58,7 +59,9 @@ function normalizePreferences(value = {}) {
 function normalizeStatistics(value = {}) {
   const matches = Number.isSafeInteger(value.matches) && value.matches >= 0 ? value.matches : 0;
   const wins = Number.isSafeInteger(value.wins) && value.wins >= 0 && value.wins <= matches ? value.wins : 0;
-  return { matches, wins };
+  const handsWon = Number.isSafeInteger(value.handsWon) && value.handsWon >= 0 ? value.handsWon : 0;
+  const biggestPot = Number.isSafeInteger(value.biggestPot) && value.biggestPot >= 0 ? value.biggestPot : 0;
+  return { matches, wins, handsWon, biggestPot };
 }
 
 function persist(storage, state) {
@@ -100,9 +103,13 @@ export function savePreferences(preferences, storage = browserStorage()) {
 
 export function recordMatch(summary, storage = browserStorage()) {
   const state = loadLocalState(storage);
+  if (summary?.matchId && recordedMatchIds.has(summary.matchId)) return state.statistics;
+  if (summary?.matchId) recordedMatchIds.add(summary.matchId);
   const statistics = {
     matches: state.statistics.matches + 1,
-    wins: state.statistics.wins + (summary?.won === true ? 1 : 0),
+    wins: state.statistics.wins + (summary?.placement === 1 || summary?.won === true ? 1 : 0),
+    handsWon: state.statistics.handsWon + (Number.isSafeInteger(summary?.handsWon) ? summary.handsWon : 0),
+    biggestPot: Math.max(state.statistics.biggestPot, Number.isSafeInteger(summary?.biggestPot) ? summary.biggestPot : 0),
   };
   persist(storage, { ...state, statistics });
   return statistics;

@@ -33,7 +33,7 @@ function safeResult(result) {
   };
 }
 
-function safeMatchStatus(status) {
+function safeMatchStatus(status, matchId) {
   if (!status) return null;
   return {
     handNumber: status.handNumber,
@@ -41,6 +41,7 @@ function safeMatchStatus(status) {
     reason: status.reason,
     rankings: status.rankings?.map(ranking => ({ ...ranking })) ?? null,
     summary: status.summary ? {
+      matchId,
       handsPlayed: status.summary.handsPlayed,
       largestPot: status.summary.largestPot,
       players: status.summary.players.map(player => ({ ...player })),
@@ -124,7 +125,7 @@ export function projectRoom(room, recipient) {
         ? room.game.legalActionsFor(recipient.playerId)
         : null,
       lastHandResult: safeResult(snapshot.lastHandResult),
-      matchStatus: safeMatchStatus(snapshot.matchStatus),
+      matchStatus: safeMatchStatus(snapshot.matchStatus, `${room.code}_m${room.matchNumber}`),
     },
   };
 }

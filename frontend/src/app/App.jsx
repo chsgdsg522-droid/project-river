@@ -3,7 +3,10 @@ import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-d
 import { socketClient } from '../lib/socketClient.js';
 import { GamePage } from '../pages/GamePage.jsx';
 import { HomePage } from '../pages/HomePage.jsx';
+import { PracticePage } from '../pages/PracticePage.jsx';
+import { ResultsPage } from '../pages/ResultsPage.jsx';
 import { RoomPage } from '../pages/RoomPage.jsx';
+import { TutorialPage } from '../pages/TutorialPage.jsx';
 import { useApp } from './AppProviders.jsx';
 
 function Placeholder({ title, description }) {
@@ -24,7 +27,7 @@ function Shell({ socket }) {
   const [connectionState, setConnectionState] = useState('idle');
   const [notice, setNotice] = useState(null);
   const [chatEvent, setChatEvent] = useState(null);
-  const { preferences } = useApp();
+  const { preferences, profile, addMatch } = useApp();
 
   useEffect(() => socket.subscribe(message => {
     if (message.type === 'client.status') setConnectionState(message.payload.status);
@@ -49,6 +52,21 @@ function Shell({ socket }) {
     return () => clearTimeout(timer);
   }, [chatEvent]);
 
+  function returnHome() {
+    setRoom(null);
+    setChatEvent(null);
+    navigate('/');
+  }
+
+  const rawSummary = room?.game?.matchStatus?.summary ?? null;
+  const summary = rawSummary ? {
+    ...rawSummary,
+    players: rawSummary.players.map(player => ({
+      ...player,
+      displayName: room.seats.find(seat => seat.playerId === player.playerId)?.displayName ?? player.playerId,
+    })),
+  } : null;
+
   return (
     <div className="app-shell">
       <header className="shell-header">
@@ -65,9 +83,9 @@ function Shell({ socket }) {
         <Route path="/" element={<HomePage socket={socket} errorCode={errorCode} />} />
         <Route path="/room/:code" element={<RoomPage room={room} socket={socket} connectionState={connectionState} notice={notice} />} />
         <Route path="/game/:code" element={room ? <GamePage room={room} socket={socket} muted={preferences.muted} chatEvent={chatEvent} /> : <Placeholder title="正在恢复牌局" description="等待服务器同步安全牌桌状态。" />} />
-        <Route path="/tutorial" element={<Placeholder title="规则速学" description="用一局牌掌握关键动作。" />} />
-        <Route path="/practice" element={<Placeholder title="练习桌" description="与五种风格的电脑玩家练习。" />} />
-        <Route path="/results/:code" element={<Placeholder title="本局结果" description="回顾十手牌的关键数据。" />} />
+        <Route path="/tutorial" element={<TutorialPage onFinish={() => navigate('/practice')} />} />
+        <Route path="/practice" element={<PracticePage room={room?.mode === 'practice' ? room : null} socket={socket} profile={profile} muted={preferences.muted} chatEvent={chatEvent} />} />
+        <Route path="/results/:code" element={<ResultsPage summary={summary} selfId={room?.self?.playerId} isHost={room?.hostPlayerId === room?.self?.playerId} onRecord={addMatch} onRematch={() => socket.request({ type: 'match.rematch', roomCode: room.code })} onHome={returnHome} />} />
         <Route path="*" element={<Placeholder title="找不到页面" description="返回首页重新开始。" />} />
       </Routes>
     </div>

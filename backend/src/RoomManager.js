@@ -110,6 +110,13 @@ export class RoomManager {
     return { room, playerId: host.playerId };
   }
 
+  createPracticeRoom(profile) {
+    const created = this.createRoom(profile);
+    created.room.mode = 'practice';
+    this.startRoom(created.room.code, created.playerId);
+    return { ...created, role: 'player' };
+  }
+
   getRoom(code) {
     return this.rooms.get(code) ?? null;
   }

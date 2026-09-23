@@ -22,7 +22,7 @@ describe('versioned local state', () => {
 
     expect(loadLocalState(storage)).toEqual(expect.objectContaining({
       profile: null,
-      statistics: { matches: 0, wins: 0 },
+      statistics: { matches: 0, wins: 0, handsWon: 0, biggestPot: 0 },
     }));
   });
 
@@ -45,8 +45,19 @@ describe('versioned local state', () => {
 
     const state = loadLocalState(storage);
     expect(state.preferences).toEqual({ theme: 'light', deck: 'fourColor', muted: true, reducedMotion: true });
-    expect(state.statistics).toEqual({ matches: 1, wins: 1 });
+    expect(state.statistics).toEqual({ matches: 1, wins: 1, handsWon: 0, biggestPot: 0 });
     expect(JSON.stringify(state)).not.toContain('SECRET');
     expect(JSON.stringify(state)).not.toContain('As');
+  });
+
+  it('deduplicates the same match in the current session and stores only aggregates', () => {
+    const storage = fakeStorage();
+    const summary = { matchId: 'ABC234_m99', placement: 1, handsWon: 3, biggestPot: 620 };
+
+    recordMatch(summary, storage);
+    recordMatch(summary, storage);
+
+    expect(loadLocalState(storage).statistics).toEqual({ matches: 1, wins: 1, handsWon: 3, biggestPot: 620 });
+    expect(storage.getItem('river.state.v1')).not.toContain('ABC234_m99');
   });
 });

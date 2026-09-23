@@ -207,6 +207,13 @@ export function createServer({
         bindPlayer(socket, { ...created, role: 'player' });
         return;
       }
+      if (message.type === 'practice.create') {
+        if (existing) throw codedError('SESSION_ALREADY_BOUND');
+        const created = rooms.createPracticeRoom(message.profile);
+        scheduleAutomation(created.room);
+        bindPlayer(socket, created);
+        return;
+      }
       if (message.type === 'room.join') {
         if (existing) throw codedError('SESSION_ALREADY_BOUND');
         bindPlayer(socket, rooms.joinRoom(message.roomCode, message.profile));

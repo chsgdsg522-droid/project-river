@@ -4,6 +4,66 @@
   background: var(--color-page);
 }
 
+.learning-toggle {
+  position: fixed;
+  z-index: 30;
+  left: 16px;
+  bottom: 18px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.learning-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-accent);
+}
+
+.learning-panel {
+  position: fixed;
+  z-index: 29;
+  left: 16px;
+  bottom: 78px;
+  width: min(280px, calc(100% - 32px));
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-panel) 96%, transparent);
+  box-shadow: var(--shadow-panel);
+}
+
+.learning-panel > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.learning-panel strong {
+  color: var(--color-accent);
+}
+
+.learning-panel small,
+.learning-panel p {
+  color: var(--color-text-muted);
+}
+
+.learning-panel p {
+  margin: 13px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
 .game-statusbar {
   width: min(1180px, calc(100% - 32px));
   min-height: 48px;

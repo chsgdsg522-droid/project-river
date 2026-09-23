@@ -61,4 +61,13 @@ describe('parseClientMessage', () => {
       expect(parsed.profile).toEqual({ displayName: '河岸 Player_7', avatarId });
     }
   });
+
+  it('accepts a strict practice-room request without room credentials', () => {
+    expect(parseClientMessage(JSON.stringify({ type: 'practice.create', profile }))).toEqual({
+      type: 'practice.create',
+      profile,
+    });
+    expect(() => parseClientMessage(JSON.stringify({ type: 'practice.create', profile, roomCode: 'ABC234' })))
+      .toThrowError(expect.objectContaining({ code: 'UNKNOWN_FIELD' }));
+  });
 });

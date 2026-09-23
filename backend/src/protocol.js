@@ -82,6 +82,7 @@ function parseAction(action) {
 function parseByType(message) {
   switch (message.type) {
     case 'room.create':
+    case 'practice.create':
       assertOnlyKeys(message, ['type', 'profile']);
       return { type: message.type, profile: parseProfile(message.profile) };
     case 'room.join':
