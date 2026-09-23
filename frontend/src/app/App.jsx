@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { socketClient } from '../lib/socketClient.js';
+import { GamePage } from '../pages/GamePage.jsx';
 import { HomePage } from '../pages/HomePage.jsx';
 import { RoomPage } from '../pages/RoomPage.jsx';
+import { useApp } from './AppProviders.jsx';
 
 function Placeholder({ title, description }) {
   return (
@@ -21,6 +23,8 @@ function Shell({ socket }) {
   const [errorCode, setErrorCode] = useState(null);
   const [connectionState, setConnectionState] = useState('idle');
   const [notice, setNotice] = useState(null);
+  const [chatEvent, setChatEvent] = useState(null);
+  const { preferences } = useApp();
 
   useEffect(() => socket.subscribe(message => {
     if (message.type === 'client.status') setConnectionState(message.payload.status);
@@ -28,6 +32,7 @@ function Shell({ socket }) {
       setErrorCode(message.payload.code);
       if (message.payload.code === 'ROOM_NOT_FOUND') navigate('/');
     } else if (message.type === 'server.notice') setNotice(message.payload.code);
+    else if (message.type === 'quickChat.event') setChatEvent(message.payload);
     else if (message.type === 'room.state') {
       setErrorCode(null);
       setRoom({ ...message.payload, revision: message.revision });
@@ -37,6 +42,12 @@ function Shell({ socket }) {
       else if (message.payload.phase === 'results') navigate(`/results/${code}`);
     }
   }), [navigate, socket]);
+
+  useEffect(() => {
+    if (!chatEvent) return undefined;
+    const timer = setTimeout(() => setChatEvent(null), 2_500);
+    return () => clearTimeout(timer);
+  }, [chatEvent]);
 
   return (
     <div className="app-shell">
@@ -53,7 +64,7 @@ function Shell({ socket }) {
       <Routes location={location}>
         <Route path="/" element={<HomePage socket={socket} errorCode={errorCode} />} />
         <Route path="/room/:code" element={<RoomPage room={room} socket={socket} connectionState={connectionState} notice={notice} />} />
-        <Route path="/game/:code" element={<Placeholder title="牌局进行中" description="牌桌界面准备中。" />} />
+        <Route path="/game/:code" element={room ? <GamePage room={room} socket={socket} muted={preferences.muted} chatEvent={chatEvent} /> : <Placeholder title="正在恢复牌局" description="等待服务器同步安全牌桌状态。" />} />
         <Route path="/tutorial" element={<Placeholder title="规则速学" description="用一局牌掌握关键动作。" />} />
         <Route path="/practice" element={<Placeholder title="练习桌" description="与五种风格的电脑玩家练习。" />} />
         <Route path="/results/:code" element={<Placeholder title="本局结果" description="回顾十手牌的关键数据。" />} />

@@ -93,6 +93,7 @@ describe('Project River server', () => {
     }
     const started = await host.sendAndWait({ type: 'room.start', roomCode: code }, 'room.state', value => value.payload.phase === 'playing');
     const guestStarted = await guest.waitFor('room.state', value => value.revision === started.revision);
+    expect(started.payload.actionDeadline).toEqual(expect.any(Number));
     const hostCards = started.payload.game.players[hostSession.payload.playerId].holeCards;
     expect(hostCards).toHaveLength(2);
     expect(guestStarted.payload.game.players[hostSession.payload.playerId].holeCards).toBeUndefined();
@@ -104,6 +105,7 @@ describe('Project River server', () => {
       actionId: 'click_0001', revision: started.revision, action: { type: 'call' },
     }, 'room.state', value => value.revision > started.revision);
     expect(acted.payload.game.actorId).toBe(guestSession.payload.playerId);
+    expect(acted.payload.actionDeadline).toEqual(expect.any(Number));
 
     await host.close();
     await guest.close();

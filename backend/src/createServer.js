@@ -106,14 +106,15 @@ export function createServer({
   function scheduleAutomation(room) {
     turnClock.cancel(room.code);
     cancelHandTimer(room.code);
+    room.actionDeadline = null;
     if (room.phase !== 'playing' || !room.game) return;
     if (room.game.phase === 'betweenHands') {
       const timeoutId = schedule(() => {
         handTimers.delete(room.code);
         try {
           rooms.startNextHand(room.code);
-          broadcastRoom(room);
           scheduleAutomation(room);
+          broadcastRoom(room);
         } catch (error) {
           log('next_hand_error', { roomHash: roomHash(room.code), errorCode: error.code ?? 'UNKNOWN' });
         }
@@ -137,8 +138,8 @@ export function createServer({
       onExpire: () => {
         try {
           rooms.applyTimeout(room.code);
-          broadcastRoom(room);
           scheduleAutomation(room);
+          broadcastRoom(room);
         } catch (error) {
           log('turn_timeout_error', { roomHash: roomHash(room.code), errorCode: error.code ?? 'UNKNOWN' });
         }
@@ -152,8 +153,8 @@ export function createServer({
     setTimeout: schedule,
     clearTimeout: cancel,
     onStateChange: room => {
-      broadcastRoom(room);
       scheduleAutomation(room);
+      broadcastRoom(room);
     },
   });
 
@@ -243,8 +244,8 @@ export function createServer({
         }
         return;
       }
-      broadcastRoom(room);
       scheduleAutomation(room);
+      broadcastRoom(room);
       log('message', { roomHash: roomHash(room.code), messageType: message.type, durationMs: now() - startedAt });
     } catch (error) {
       const code = error instanceof ProtocolError ? error.code : error.code ?? error.message ?? 'UNKNOWN_ERROR';
@@ -293,8 +294,8 @@ export function createServer({
       const room = rooms.getRoom(takeover.roomCode);
       if (token && room) sessions.forceBotControl(token, room.handId);
       if (room) {
-        broadcastRoom(room);
         scheduleAutomation(room);
+        broadcastRoom(room);
       }
     }
     const expired = rooms.expireIdleRooms(at);

@@ -44,6 +44,7 @@ function room(options) {
     code: 'ABC234',
     phase: snapshot.phase,
     mode: 'friends',
+    actionDeadline: 25_000,
     revision: 9,
     hostPlayerId: 'hero',
     seats: [
@@ -112,7 +113,7 @@ describe('projectRoom', () => {
     expect(createRoomStateEnvelope(source, player('hero'))).toMatchObject({
       type: 'room.state',
       revision: 9,
-      payload: { code: 'ABC234', handId: 'ABC234_m1_h3' },
+      payload: { code: 'ABC234', handId: 'ABC234_m1_h3', actionDeadline: 25_000 },
     });
   });
 
