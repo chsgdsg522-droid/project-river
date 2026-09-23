@@ -1,33 +1,40 @@
 export class Player {
-  constructor(id, name) {
+  constructor(id, displayName, { seat = null, stack = 1_000 } = {}) {
     this.id = id;
-    this.name = name;
-    this.chips = 1000;
+    this.displayName = displayName;
+    this.name = displayName;
+    this.seat = seat;
+    this.stack = stack;
     this.holeCards = [];
+    this.streetCommitment = 0;
+    this.totalCommitment = 0;
     this.folded = false;
-    this.currentBet = 0;
-    this.isAllIn = false;
-    this.ready = false;
-    this.totalBet = 0;
-    this.isSpectator = true;
-    this.lastAction = { type: '', amount: 0 };
-    this.stats = {
-      handsPlayed: 0,
-      potsWon: 0,
-      losses: 0,
-      biggestPot: 0,
-      bestHand: '',
-    };
-    this.achievements = [];
+    this.allIn = false;
     this.revealed = false;
+    this.lastAction = null;
   }
+
+  get chips() { return this.stack; }
+  set chips(value) { this.stack = value; }
+  get currentBet() { return this.streetCommitment; }
+  set currentBet(value) { this.streetCommitment = value; }
+  get totalBet() { return this.totalCommitment; }
+  set totalBet(value) { this.totalCommitment = value; }
+  get isAllIn() { return this.allIn; }
+  set isAllIn(value) { this.allIn = value; }
 
   resetForNewHand() {
     this.holeCards = [];
+    this.streetCommitment = 0;
+    this.totalCommitment = 0;
     this.folded = false;
-    this.currentBet = 0;
-    this.isAllIn = false;
-    this.totalBet = 0;
-    this.lastAction = { type: '', amount: 0 };
+    this.allIn = false;
+    this.revealed = false;
+    this.lastAction = null;
+  }
+
+  resetForNewStreet() {
+    this.streetCommitment = 0;
+    this.lastAction = null;
   }
 }
