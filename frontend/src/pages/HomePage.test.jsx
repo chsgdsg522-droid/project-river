@@ -23,6 +23,7 @@ function renderHome(socket = fakeSocket()) {
       </AppProviders>
     </MemoryRouter>,
   );
+  socket.storage = storage;
   return socket;
 }
 
@@ -44,6 +45,14 @@ describe('HomePage', () => {
     const labels = screen.getAllByRole('button').map(button => button.textContent.trim());
     expect(labels.slice(-4)).toEqual(['创建好友房', '加入房间', '单人练习', '新手教程']);
     expect(screen.getByText('仅使用虚拟筹码，不支持充值、提现或现实奖励。')).toBeVisible();
+  });
+
+  it('saves the local identity before opening solo practice', async () => {
+    const socket = renderHome();
+    await userEvent.type(screen.getByLabelText('昵称'), '练习生');
+    await userEvent.click(screen.getByRole('button', { name: '单人练习' }));
+
+    expect(socket.storage.setItem).toHaveBeenCalled();
   });
 
   it('normalizes codes and rejects an invalid invitation before sending', async () => {

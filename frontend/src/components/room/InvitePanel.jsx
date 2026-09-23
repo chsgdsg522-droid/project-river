@@ -34,7 +34,7 @@ export function InvitePanel({ code, clipboard }) {
     <section className="invite-panel" aria-labelledby="invite-title">
       <div>
         <p>房间码</p>
-        <h2 id="invite-title">{code}</h2>
+        <h2 id="invite-title" data-testid="room-code">{code}</h2>
       </div>
       <div className="invite-actions">
         <button type="button" onClick={() => copy(code, 'code')}>复制房间码</button>

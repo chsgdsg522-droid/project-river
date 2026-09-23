@@ -37,6 +37,8 @@ npm run test:e2e
 npm run check
 ```
 
+The Playwright suite starts the backend and frontend automatically and runs Chromium, WebKit, and Firefox projects. See [docs/TESTING.md](docs/TESTING.md) for coverage and the honest manual-browser record.
+
 ## Open-source origin
 
 Project River is derived from the MIT-licensed [Elite Poker](https://github.com/opadips/Elite-Poker) project. See [NOTICE.md](NOTICE.md) and [LICENSE](LICENSE) for attribution and license details.

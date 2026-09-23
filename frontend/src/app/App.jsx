@@ -41,7 +41,7 @@ function Shell({ socket }) {
       setRoom({ ...message.payload, revision: message.revision });
       const code = message.payload.code;
       if (message.payload.phase === 'waiting') navigate(`/room/${code}`);
-      else if (message.payload.phase === 'playing') navigate(`/game/${code}`);
+      else if (message.payload.phase === 'playing') navigate(message.payload.mode === 'practice' ? '/practice' : `/game/${code}`);
       else if (message.payload.phase === 'results') navigate(`/results/${code}`);
     }
   }), [navigate, socket]);

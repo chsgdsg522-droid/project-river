@@ -29,7 +29,7 @@ export function PokerTable({ room }) {
         <div className="pot-label">底池 <span lang="en">Pot</span> <strong>{game.pot}</strong></div>
       </div>
       {self?.holeCards && (
-        <div className="self-hand" aria-label="你的手牌">
+        <div className="self-hand" aria-label="你的手牌" data-testid="self-hole-cards">
           {self.holeCards.map(code => <Card key={code} code={code} />)}
         </div>
       )}

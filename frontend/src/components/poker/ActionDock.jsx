@@ -31,7 +31,7 @@ export function ActionDock({ legal, pot = 0, streetCommitment = 0, callTo = stre
 
   if (!legal) return null;
   return (
-    <section className="action-dock" aria-label="牌局操作">
+    <section className="action-dock" aria-label="牌局操作" data-testid="action-dock">
       <div className="action-dock__buttons">
         {legal.fold && <button type="button" disabled={disabled} onClick={() => onAction({ type: 'fold' })}><Term id="fold" /></button>}
         {legal.check

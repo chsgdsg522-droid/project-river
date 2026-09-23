@@ -61,6 +61,16 @@ export function HomePage({ socket, errorCode = null }) {
     send('room.join', roomCode);
   }
 
+  function openLocal(path) {
+    setError('');
+    try {
+      validatedProfile();
+      navigate(path);
+    } catch {
+      setError('昵称应为 1-24 个中文、字母、数字、空格、下划线或连字符');
+    }
+  }
+
   return (
     <main className="home-page">
       <section className="home-intro">
@@ -116,8 +126,8 @@ export function HomePage({ socket, errorCode = null }) {
             </label>
             <button type="button" className="entry-action" disabled={pending !== null} onClick={joinRoom}>加入房间</button>
           </div>
-          <button type="button" className="entry-action" onClick={() => navigate('/practice')}>单人练习</button>
-          <button type="button" className="entry-action" onClick={() => navigate('/tutorial')}>新手教程</button>
+          <button type="button" className="entry-action" onClick={() => openLocal('/practice')}>单人练习</button>
+          <button type="button" className="entry-action" onClick={() => openLocal('/tutorial')}>新手教程</button>
         </div>
 
         {(error || errorCode) && <p className="form-error" role="alert">{error || ERROR_MESSAGES[errorCode] || '操作没有完成，请重试'}</p>}
