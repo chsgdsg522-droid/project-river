@@ -41,7 +41,7 @@ npm run test:e2e
 npm run check
 ```
 
-The Playwright suite starts the backend and frontend automatically and runs Chromium, WebKit, and Firefox projects. See [docs/TESTING.md](docs/TESTING.md) for coverage and the honest manual-browser record.
+The Playwright suite starts fresh backend and frontend processes automatically and runs Chromium, WebKit, and Firefox projects. Stop development/preview servers on ports 8080 and 5173 first; tests intentionally do not reuse them. See [docs/TESTING.md](docs/TESTING.md) for coverage and the honest manual-browser record.
 
 ## Privacy and limitations
 

@@ -11,6 +11,8 @@ npm run test:e2e
 
 Playwright starts the in-memory backend and Vite frontend and accesses them through loopback. The browser suite covers two isolated players completing ten hands, an offline/online smoke scenario, rematch, recipient-specific card privacy, cross-client session-token isolation, spectator restrictions, invitation URL onboarding, leaving and creating a new room, first-use practice, preferences, and 320/768/1440 px layouts.
 
+Stop any existing development/preview servers on ports 8080 and 5173 before running Playwright. Server reuse is deliberately disabled: an existing Vite 4 process initially survived the dependency upgrade and could mask startup compatibility. The root frontend script now forwards CLI arguments correctly to Vite, and its default listener is 127.0.0.1. Both servers must start fresh for release verification; an occupied port fails clearly instead of silently selecting an old process.
+
 Pre-merge verification on 2026-09-23: `npm run check` passed **119 backend tests, 33 frontend tests, and the production build**. `npm run test:e2e -- --retries=0` passed **30 browser tests** with no retries.
 
 Release-readiness follow-up: clean `npm ci`, full `npm audit`, and production-only audit passed with **zero known vulnerabilities**. `npm run check` passed **120 backend tests, 36 frontend tests, and the production build** on Node 26.3.1. `npm run test:e2e -- --retries=0` passed **33 browser tests** (11 per engine) in 1.6 minutes. New regression tests were run red before implementation and green afterward; they cover browser timer receivers, disabled reconnect controls, synchronous transport-close races, and same-revision action-rejection recovery. The deadline regression advances injected time to detect accidental timer resets.

@@ -9,13 +9,13 @@ export default defineConfig({
     {
       command: 'npm run start -w backend',
       url: 'http://127.0.0.1:8080/health',
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 30_000,
     },
     {
       command: 'npm run dev:frontend -- --host 127.0.0.1',
       url: 'http://127.0.0.1:5173',
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 30_000,
     },
   ],
