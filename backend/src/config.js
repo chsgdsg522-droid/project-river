@@ -6,3 +6,6 @@ export const DEFAULT_RULES = Object.freeze({
   reconnectMs: 30_000,
   roomIdleMs: 30 * 60_000,
 });
+
+export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const MAX_ROOM_CODE_ATTEMPTS = 100;
