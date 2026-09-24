@@ -21,13 +21,15 @@ export function PracticePage({ room, socket, profile, muted = false, chatEvent =
   const self = room.game?.players?.[room.self?.playerId];
   const reviewing = Boolean(room.game?.lastHandResult);
   return (
-    <>
-      <GamePage room={room} socket={socket} muted={muted} chatEvent={chatEvent} connectionState={connectionState} errorCode={errorCode} />
-      {!reviewing && <label className="learning-toggle">
-        <input type="checkbox" role="switch" checked={showLearning} onChange={event => setShowLearning(event.target.checked)} />
+    <GamePage
+      room={room} socket={socket} muted={muted} chatEvent={chatEvent} connectionState={connectionState} errorCode={errorCode}
+      headerControl={!reviewing && <label className="learning-toggle">
+        <input type="checkbox" role="switch" checked={showLearning} onChange={event => setShowLearning(event.target.checked)} aria-controls="practice-learning-panel" />
         <span>显示学习辅助</span>
       </label>}
-      {showLearning && !reviewing && <LearningPanel mode={room.mode} holeCards={self?.holeCards} board={room.game?.board} pot={room.game?.pot} callAmount={room.game?.legalActions?.callAmount} />}
-    </>
+      beforeTable={showLearning && !reviewing && <div className="practice-help">
+        <LearningPanel id="practice-learning-panel" mode={room.mode} holeCards={self?.holeCards} board={room.game?.board} pot={room.game?.pot} callAmount={room.game?.legalActions?.callAmount} />
+      </div>}
+    />
   );
 }

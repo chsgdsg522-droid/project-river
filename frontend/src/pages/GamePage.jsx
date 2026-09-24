@@ -13,7 +13,7 @@ const ACTION_ERRORS = {
   QUICK_CHAT_RATE_LIMITED: '消息发送太快，请稍等再发。',
 };
 
-export function GamePage({ room, socket, muted = false, chatEvent = null, connectionState = 'connected', errorCode = null }) {
+export function GamePage({ room, socket, muted = false, chatEvent = null, connectionState = 'connected', errorCode = null, headerControl = null, beforeTable = null }) {
   const [pending, setPending] = useState(false);
   const [requestError, setRequestError] = useState(null);
   const previous = useRef({ handId: room.handId, actorId: room.game?.actorId, pot: room.game?.pot, result: room.game?.lastHandResult });
@@ -70,13 +70,17 @@ export function GamePage({ room, socket, muted = false, chatEvent = null, connec
 
   return (
     <main className="game-page">
-      <header className="game-statusbar">
+      <header className={`game-statusbar${!reviewing && headerControl ? ' game-statusbar--with-control' : ''}`}>
         <span>第 {room.game.handNumber} / 10 手</span>
         <strong>{room.code}</strong>
-        {room.self?.role === 'spectator' && <span>观战模式</span>}
+        <div className="game-statusbar__extra">
+          {room.self?.role === 'spectator' && <span>观战模式</span>}
+          {!reviewing && headerControl}
+        </div>
       </header>
       {disconnected && <p className="room-notices" role="status">正在重新连接并同步牌局…操作已暂停，请勿刷新页面。</p>}
       {!disconnected && visibleError && <p className="room-notices" role="alert">{ACTION_ERRORS[visibleError] ?? '操作未成功，请检查当前牌局后重试。'}</p>}
+      {!reviewing && beforeTable}
       {reviewing
         ? <HandResult key={room.handId} room={room} onContinue={continueHand} disabled={disabled} />
         : <PokerTable room={room} />}

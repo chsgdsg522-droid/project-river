@@ -31,6 +31,14 @@ The server-handler regressions in `backend/test/sessionLifecycle.test.js` use in
 
 `npm run test:e2e -- --retries=0 --workers=3` passed **39/39 browser tests** across Chromium, WebKit, and Firefox in 5.2 minutes, with fresh local servers. The focused read-only code review found no blocking correctness, privacy, or lifecycle issues; the UI detector returned no findings.
 
+## Learning-control layout follow-up — 2026-09-24
+
+The learning switch now lives in the game status bar; expanded help uses document flow above the full-size table. With help expanded, the action bar follows the table so a short screen can scroll instead of covering cards. Learning estimates and the hidden-during-result behavior are unchanged.
+
+The new `e2e/learning-layout.spec.js` first reproduced overlap at 320 px and 768 px. It checks the rendered control/panel/card/action rectangles, horizontal overflow, expanded-state pointer hit targets, and a real Fold/Check click after closing help. Verification used separate fresh servers on ports 5174/8081 so the user's 5173 practice session was not interrupted. `npm run check` passed 128 backend tests, 41 frontend tests, and the production build.
+
+The focused browser run passed **27/27** tests without retries across Chromium, WebKit, and Firefox (`learning-layout`, `responsive`, and `hand-result` specs). This UI-only follow-up did not rerun the longer ten-hand reconnect scenarios; their prior result is recorded above.
+
 ## Manual browser record — 2026-09-23
 
 Automated Playwright matrix: Chromium, WebKit, and Firefox **33/33 passed** on 2026-09-23, including the mixed-table reconnect scenario on every engine. This is separate from the manual record below.

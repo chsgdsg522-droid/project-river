@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { estimateVisibleEquity } from './equityWorker.js';
 
-export function LearningPanel({ mode, holeCards = [], board = [], pot = 0, callAmount = 0 }) {
+export function LearningPanel({ id, mode, holeCards = [], board = [], pot = 0, callAmount = 0 }) {
   const [equity, setEquity] = useState(null);
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function LearningPanel({ mode, holeCards = [], board = [], pot = 0, callA
   if (mode !== 'practice') return null;
   const potOdds = callAmount > 0 ? Math.round((callAmount / (pot + callAmount)) * 100) : 0;
   return (
-    <aside className="learning-panel" aria-label="练习估算">
+    <aside id={id} className="learning-panel" aria-label="练习估算">
       <div><span>练习估算</span><strong>{equity === null ? '计算中' : `${equity}%`}</strong></div>
       <div><span>底池赔率 <small lang="en">Pot odds</small></span><strong>{potOdds}%</strong></div>
       <p>仅根据当前可见牌做教学估算，不代表最佳行动。</p>
