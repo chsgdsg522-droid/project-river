@@ -23,6 +23,14 @@ Dependency decisions: keep React 18 and adopt the compatible [Router v7 re-expor
 
 The server-handler regressions in `backend/test/sessionLifecycle.test.js` use injected time and transport to verify socket replacement, spectator resume/promotion, host recovery, same-hand bot cancellation, deferred next-hand restoration, rejected-request atomicity, and duplicate-action deadline preservation. These are deterministic integration checks, not a substitute for a real-device network-loss trial.
 
+## Per-hand result review — 2026-09-24
+
+`npm run check` passed **128 backend tests, 41 frontend tests, and the production build**. Result-flow tests were observed failing before the implementation and passing afterward. Coverage includes eight-second friend-room review (including hand ten), indefinite practice review, host-only continuation, stale duplicate/early continuation rejection, reconnect deadline preservation, and privacy-filtered showdown hand types. UI tests cover multiple pot winners, uncontested wins, disconnected controls, and the final-hand Results button.
+
+`e2e/hand-result.spec.js` plays real practice and friend-room hands without replacing server state. It waits nine seconds on a practice result before continuing, checks mobile overflow and reduced motion, and verifies that both eligible friend-room hands are revealed before automatic continuation. Desktop 1440×900 and mobile 320×700 screenshots of a real showdown were visually inspected: cards, bilingual hand types, winner marks, and Next hand remain readable; the learning overlay is absent during review. The ten-hand browser time budgets explicitly include the new eight-second pauses.
+
+`npm run test:e2e -- --retries=0 --workers=3` passed **39/39 browser tests** across Chromium, WebKit, and Firefox in 5.2 minutes, with fresh local servers. The focused read-only code review found no blocking correctness, privacy, or lifecycle issues; the UI detector returned no findings.
+
 ## Manual browser record — 2026-09-23
 
 Automated Playwright matrix: Chromium, WebKit, and Firefox **33/33 passed** on 2026-09-23, including the mixed-table reconnect scenario on every engine. This is separate from the manual record below.

@@ -4,6 +4,15 @@ import { AVATAR_IDS, parseClientMessage, ProtocolError } from '../src/protocol.j
 const profile = { displayName: '河岸玩家-7', avatarId: 'river-fox' };
 
 describe('parseClientMessage', () => {
+  it('requires a valid hand ID for continuing a practice result', () => {
+    const message = { type: 'hand.continue', roomCode: 'ABC234', handId: 'ABC234_m1_h3' };
+    expect(parseClientMessage(JSON.stringify(message))).toEqual(message);
+    expect(() => parseClientMessage(JSON.stringify({ ...message, handId: undefined })))
+      .toThrowError(expect.objectContaining({ code: 'INVALID_HAND_ID' }));
+    expect(() => parseClientMessage(JSON.stringify({ ...message, skip: true })))
+      .toThrowError(expect.objectContaining({ code: 'UNKNOWN_FIELD' }));
+  });
+
   it('rejects an unknown message without reflecting attacker-controlled fields', () => {
     let error;
     try {

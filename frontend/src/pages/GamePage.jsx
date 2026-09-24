@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionDock } from '../components/poker/ActionDock.jsx';
+import { HandResult } from '../components/poker/HandResult.jsx';
 import { PokerTable } from '../components/poker/PokerTable.jsx';
 import { QuickChat, QUICK_CHAT_LABELS } from '../components/poker/QuickChat.jsx';
 import { useGameSound } from '../hooks/useGameSound.js';
@@ -35,6 +36,7 @@ export function GamePage({ room, socket, muted = false, chatEvent = null, connec
   const disconnected = connectionState !== 'connected' || requestError === 'SOCKET_NOT_CONNECTED';
   const disabled = pending || disconnected;
   const visibleError = requestError ?? errorCode;
+  const reviewing = Boolean(room.game.lastHandResult);
 
   function request(message) {
     try {
@@ -59,6 +61,13 @@ export function GamePage({ room, socket, muted = false, chatEvent = null, connec
     });
   }
 
+  function continueHand() {
+    if (disabled) return;
+    setPending(true);
+    setRequestError(null);
+    request({ type: 'hand.continue', roomCode: room.code, handId: room.handId });
+  }
+
   return (
     <main className="game-page">
       <header className="game-statusbar">
@@ -68,7 +77,9 @@ export function GamePage({ room, socket, muted = false, chatEvent = null, connec
       </header>
       {disconnected && <p className="room-notices" role="status">正在重新连接并同步牌局…操作已暂停，请勿刷新页面。</p>}
       {!disconnected && visibleError && <p className="room-notices" role="alert">{ACTION_ERRORS[visibleError] ?? '操作未成功，请检查当前牌局后重试。'}</p>}
-      <PokerTable room={room} />
+      {reviewing
+        ? <HandResult key={room.handId} room={room} onContinue={continueHand} disabled={disabled} />
+        : <PokerTable room={room} />}
       {chatEvent && <p className="chat-toast" role="status">{chatName ? `${chatName}：` : ''}{QUICK_CHAT_LABELS[chatEvent.messageId]}</p>}
       {room.self?.role === 'player' && room.game.actorId === selfId && (
         <ActionDock
@@ -80,10 +91,10 @@ export function GamePage({ room, socket, muted = false, chatEvent = null, connec
           disabled={disabled}
         />
       )}
-      <QuickChat
+      {!reviewing && <QuickChat
         disabled={disabled}
         onSend={messageId => { if (!disabled) request({ type: 'quickChat.send', roomCode: room.code, messageId }); }}
-      />
+      />}
     </main>
   );
 }

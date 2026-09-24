@@ -4,6 +4,165 @@
   background: var(--color-page);
 }
 
+.hand-result {
+  width: min(880px, calc(100% - 32px));
+  margin: 24px auto 48px;
+}
+
+.hand-result__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hand-result__heading h1 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.hand-result__heading h1 small {
+  margin-left: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.55em;
+  font-weight: 500;
+}
+
+.hand-result__heading > span {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.hand-result__heading > span strong {
+  margin-left: 8px;
+  color: var(--color-text);
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hand-result__board {
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.hand-result__players {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.showdown-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-panel);
+}
+
+.showdown-player.is-winner {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-panel));
+}
+
+.showdown-player__identity {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.showdown-player__identity > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.showdown-player__identity small {
+  font-size: 0.75em;
+  font-weight: 400;
+}
+
+.showdown-player__cards {
+  display: flex;
+  gap: 6px;
+}
+
+.showdown-player__cards .poker-card {
+  width: 52px;
+  box-shadow: 0 3px 8px rgb(1 8 7 / 12%);
+}
+
+.showdown-player__type {
+  display: grid;
+  gap: 6px;
+}
+
+.showdown-player__type strong {
+  font-size: 1.2rem;
+}
+
+.showdown-player__type span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.hand-winner {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+  font-size: 0.85rem;
+}
+
+.hand-winner__icon {
+  width: 24px;
+  height: 24px;
+  animation: winner-arrive 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hand-result__continue {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+.hand-result__continue button {
+  width: min(100%, 320px);
+  min-height: 52px;
+}
+
+.hand-result__continue p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes winner-arrive {
+  from { opacity: 0; transform: translateY(6px) scale(0.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 640px) {
+  .hand-result { margin-top: 16px; }
+  .hand-result__players { grid-template-columns: minmax(0, 1fr); }
+  .hand-result__board { gap: 6px; padding: 24px 0; }
+  .hand-result__board .poker-card { width: clamp(44px, 13vw, 60px); }
+  .showdown-player { padding: 16px; gap: 14px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand-winner__icon { animation: none; }
+}
+
+[data-reduced-motion='true'] .hand-winner__icon { animation: none; }
+
 .learning-toggle {
   position: fixed;
   z-index: 30;

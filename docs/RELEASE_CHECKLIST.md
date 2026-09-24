@@ -1,6 +1,6 @@
 # Local MVP release checklist
 
-Status date: 2026-09-23. “Automated” means covered by the checked-in unit, integration, or Playwright suite. “Manual pending” is not a pass.
+Status date: 2026-09-24. “Automated” means covered by the checked-in unit, integration, or Playwright suite. “Manual pending” is not a pass.
 
 ## Game and room rules
 
@@ -28,6 +28,9 @@ Status date: 2026-09-23. “Automated” means covered by the checked-in unit, i
 - [x] Automated — keyboard actions and touch-sized controls.
 - [x] Browser — 320×700, 768×1024, and 1440×900 layouts have no horizontal overflow; mobile private cards remain reachable.
 - [x] Browser — spectator has no action controls.
+- [x] Browser / regression — per-hand results show eligible showdown cards, bilingual hand types, and winner trophy marks; folded cards remain private and uncontested wins say No showdown.
+- [x] Browser / regression — practice waits for Next hand / final Results; friend rooms retain each result for eight seconds, including the last hand. Continuation is guarded against disconnection, unauthorized users, stale clicks, and early requests.
+- [x] Visual / browser — 1440 px and 320 px result screens inspected, mobile continuation reachable, and winner animation respects reduced motion.
 - [x] Browser — Chromium, WebKit, and Firefox automated projects pass.
 - [ ] Manual pending — current Chrome, Safari, Edge, and Firefox desktop checklist; see `docs/TESTING.md`.
 - [ ] Learning accuracy pending — the current practice percentage is a simple visible-card heuristic, not validated poker equity; replace or validate it before presenting it as win probability.

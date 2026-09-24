@@ -24,12 +24,18 @@ export function projectPlayer(source, recipientId, showdownIds) {
   };
 }
 
-function safeResult(result) {
+function safeResult(result, showdownIds) {
   if (!result) return null;
   return {
     reason: result.reason,
     winnerIds: [...result.winnerIds],
     pot: result.pot,
+    hands: Object.fromEntries([...showdownIds]
+      .filter(playerId => result.hands?.[playerId])
+      .map(playerId => {
+        const hand = result.hands[playerId];
+        return [playerId, { category: hand.category, label: hand.label }];
+      })),
   };
 }
 
@@ -85,7 +91,7 @@ export function projectRoom(room, recipient) {
   }
 
   const showdownIds = new Set(Object.values(snapshot.players)
-    .filter(player => snapshot.street === 'showdown' && player.revealed && !player.folded)
+    .filter(player => snapshot.street === 'showdown' && player.revealed && !player.folded && player.holeCards.length === 2)
     .map(player => player.id));
   const players = Object.fromEntries(Object.entries(snapshot.players).map(([playerId, player]) => [
     playerId,
@@ -98,6 +104,7 @@ export function projectRoom(room, recipient) {
     phase: room.phase,
     mode: room.mode,
     actionDeadline: room.actionDeadline ?? null,
+    handReviewUntil: room.handReviewUntil ?? null,
     hostPlayerId: room.hostPlayerId,
     self: { playerId: recipient.playerId, role: recipient.role },
     seats: room.seats.map(seat => projectSeat(seat, players)),
@@ -124,7 +131,7 @@ export function projectRoom(room, recipient) {
       legalActions: recipient.role === 'player' && recipient.playerId && recipient.canAct !== false
         ? room.game.legalActionsFor(recipient.playerId)
         : null,
-      lastHandResult: safeResult(snapshot.lastHandResult),
+      lastHandResult: safeResult(snapshot.lastHandResult, showdownIds),
       matchStatus: safeMatchStatus(snapshot.matchStatus, `${room.code}_m${room.matchNumber}`),
     },
   };

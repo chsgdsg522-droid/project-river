@@ -4,6 +4,8 @@ Project River is a responsive Texas Hold'em game for private friend rooms, solo 
 
 The MVP is designed for six seats, one to six human players, bot-filled open seats, and a fixed ten-hand match. Chinese is the primary interface language, with international poker terms shown alongside key actions.
 
+Every hand ends on a visual result screen: eligible showdown cards, Chinese/English hand types, and a winner trophy. Practice waits for **Next hand** (or **Results** after the final hand); friend rooms retain each result for eight seconds. Folded cards stay private, and an uncontested win is marked **No showdown**.
+
 ## Status
 
 Development is local-first. Rooms live only in server memory and disappear when the server restarts. No public deployment is configured yet.

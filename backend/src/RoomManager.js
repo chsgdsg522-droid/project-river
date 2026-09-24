@@ -105,6 +105,7 @@ export class RoomManager {
       result: null,
       matchNumber: 0,
       handId: null,
+      handReviewUntil: null,
     };
     this.rooms.set(code, room);
     return { room, playerId: host.playerId };
@@ -208,6 +209,7 @@ export class RoomManager {
     room.handId = `${room.code}_m${room.matchNumber}_h${room.game.handNumber}`;
     room.phase = 'playing';
     room.result = null;
+    room.handReviewUntil = null;
     this.touch(room);
     return room;
   }
@@ -239,7 +241,6 @@ export class RoomManager {
 
     const event = room.game.dispatch(playerId, message.action);
     if (room.game.phase === 'results') {
-      room.phase = 'results';
       room.result = room.game.matchStatus.summary;
     }
     this.touch(room);
@@ -254,9 +255,29 @@ export class RoomManager {
       throw roomError('NEXT_HAND_NOT_AVAILABLE');
     }
     room.game.startNextHand();
+    room.handReviewUntil = null;
     room.handId = `${room.code}_m${room.matchNumber}_h${room.game.handNumber}`;
     this.touch(room);
     return room;
+  }
+
+  finishHandReview(code) {
+    const room = this.requireRoom(code);
+    if (room.phase !== 'playing' || !room.game?.lastHandResult) throw roomError('HAND_REVIEW_NOT_AVAILABLE');
+    if (room.game.phase === 'betweenHands') return this.startNextHand(code);
+    if (room.game.phase !== 'results') throw roomError('HAND_REVIEW_NOT_AVAILABLE');
+    room.phase = 'results';
+    room.handReviewUntil = null;
+    this.touch(room);
+    return room;
+  }
+
+  continuePracticeHand(code, playerId, handId) {
+    const room = this.requireRoom(code);
+    if (room.mode !== 'practice') throw roomError('PRACTICE_ONLY');
+    this.requireHost(room, playerId);
+    if (room.handId !== handId) throw roomError('STALE_HAND');
+    return this.finishHandReview(code);
   }
 
   applyTimeout(code) {

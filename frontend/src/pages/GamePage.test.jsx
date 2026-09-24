@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { PlayerSeat } from '../components/poker/PlayerSeat.jsx';
@@ -41,7 +41,65 @@ function fakeSocket() {
   return { sent: [], nextActionId: () => 'action_test_0001', request(message) { this.sent.push(message); } };
 }
 
+function settledRoom({ reason = 'showdown', final = false, winners = ['hero'], mode = 'practice' } = {}) {
+  const room = gameRoomFixture({ mode, handReviewUntil: mode === 'friends' ? Date.now() + 8_000 : null });
+  room.game.phase = final ? 'results' : 'betweenHands';
+  room.game.actorId = null;
+  room.game.street = reason === 'showdown' ? 'showdown' : 'preflop';
+  room.game.board = reason === 'showdown' ? ['2c', '7d', 'Jh', '4c', '9d'] : [];
+  room.game.players.villain = { ...room.game.players.villain, revealed: reason === 'showdown', folded: reason === 'fold', ...(reason === 'showdown' ? { holeCards: ['Ks', 'Kh'] } : {}) };
+  room.game.players['bot-1'].folded = true;
+  room.game.lastHandResult = { reason, winnerIds: winners, pot: 240, hands: reason === 'showdown' ? {
+    hero: { category: 1, label: 'One Pair' }, villain: { category: 1, label: 'One Pair' },
+  } : {} };
+  room.game.matchStatus.complete = final;
+  return room;
+}
+
 describe('GamePage', () => {
+  it('shows eligible showdown cards and bilingual hand types, with a winner marker and no folded cards', () => {
+    render(<GamePage room={settledRoom()} socket={fakeSocket()} />);
+    const result = within(screen.getByRole('region', { name: '本手结果' }));
+    expect(result.getByLabelText('河岸玩家的摊牌')).toHaveTextContent('一对');
+    expect(result.getByLabelText('暂离朋友的摊牌')).toHaveTextContent('One Pair');
+    expect(result.getByLabelText('黑桃K')).toBeVisible();
+    expect(result.getAllByLabelText('获胜 Winner')).toHaveLength(1);
+    expect(result.queryByText('松果')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('牌局操作')).not.toBeInTheDocument();
+  });
+
+  it('marks every pot winner rather than forcing a single winner for tied or side-pot outcomes', () => {
+    render(<GamePage room={settledRoom({ winners: ['hero', 'villain'] })} socket={fakeSocket()} />);
+    expect(screen.getAllByLabelText('获胜 Winner')).toHaveLength(2);
+  });
+
+  it('keeps an uncontested win honest: no invented hand type or opponent card reveal', () => {
+    render(<GamePage room={settledRoom({ reason: 'fold' })} socket={fakeSocket()} />);
+    expect(screen.getByLabelText('获胜 Winner')).toBeVisible();
+    expect(screen.getByText('未摊牌')).toBeVisible();
+    expect(screen.queryByText('One Pair')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('黑桃K')).not.toBeInTheDocument();
+  });
+
+  it('continues a practice hand once using its hand ID and blocks continuing when disconnected', async () => {
+    const socket = fakeSocket();
+    const room = settledRoom();
+    const { rerender } = render(<GamePage room={room} socket={socket} connectionState="reconnecting" />);
+    expect(screen.getByRole('button', { name: '下一手 Next hand' })).toBeDisabled();
+    rerender(<GamePage room={room} socket={socket} connectionState="connected" />);
+    await userEvent.dblClick(screen.getByRole('button', { name: '下一手 Next hand' }));
+    expect(socket.sent).toEqual([{ type: 'hand.continue', roomCode: room.code, handId: room.handId }]);
+  });
+
+  it('preserves the final hand before offering overall results, and cannot manually skip friend-room review', () => {
+    const { rerender } = render(<GamePage room={settledRoom({ final: true })} socket={fakeSocket()} />);
+    expect(screen.getByRole('region', { name: '本手结果' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '查看总排名 Results' })).toBeVisible();
+    rerender(<GamePage room={settledRoom({ mode: 'friends' })} socket={fakeSocket()} />);
+    expect(screen.queryByRole('button', { name: '下一手 Next hand' })).not.toBeInTheDocument();
+    expect(screen.getByText(/秒后下一手/)).toBeVisible();
+  });
+
   it('blocks actions and chat during reconnect, closes betting, then unlocks on a fresh same-revision snapshot', async () => {
     const socket = fakeSocket();
     const room = gameRoomFixture();

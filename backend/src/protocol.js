@@ -109,6 +109,11 @@ function parseByType(message) {
       assertRoomCode(message.roomCode);
       if (!Number.isSafeInteger(message.seat) || message.seat < 0 || message.seat > 5) throw new ProtocolError('INVALID_SEAT');
       return { type: message.type, roomCode: message.roomCode, seat: message.seat };
+    case 'hand.continue':
+      assertOnlyKeys(message, ['type', 'roomCode', 'handId']);
+      assertRoomCode(message.roomCode);
+      assertSafeId(message.handId, 'INVALID_HAND_ID');
+      return { type: message.type, roomCode: message.roomCode, handId: message.handId };
     case 'game.action':
       assertOnlyKeys(message, ['type', 'roomCode', 'handId', 'actionId', 'revision', 'action']);
       assertRoomCode(message.roomCode);

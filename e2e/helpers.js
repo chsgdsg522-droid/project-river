@@ -29,7 +29,7 @@ export async function createTwoPlayerRoom(browser, { keepBots = false, configure
   return { hostContext, guestContext, host, guest, code };
 }
 
-export async function finishByFolding(host, guest, { maxSteps = 120 } = {}) {
+export async function finishByFolding(host, guest, { maxSteps = 500 } = {}) {
   for (let step = 0; step < maxSteps; step += 1) {
     if (await host.getByRole('heading', { name: '十手牌，落定。' }).count()) return;
     const hostFold = host.getByRole('button', { name: /弃牌 Fold|过牌 Check/ });

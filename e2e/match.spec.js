@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { createTwoPlayerRoom, finishByFolding } from './helpers.js';
 
 test('two humans finish ten hands, reconnect, and return to a rematch room', async ({ browser }) => {
-  test.setTimeout(45_000);
+  // Ten hands now include eight-second result reviews, including the last hand.
+  test.setTimeout(150_000);
   const game = await createTwoPlayerRoom(browser);
   await game.host.getByRole('button', { name: '开始牌局' }).click();
   await expect(game.host.getByTestId('self-hole-cards')).toBeVisible();

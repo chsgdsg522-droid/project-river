@@ -66,6 +66,87 @@ function setup() {
 }
 
 describe('server session lifecycle', () => {
+  it('cannot skip an active practice hand and preserves the action clock on rejection', () => {
+    const game = setup();
+    game.twoPlayers();
+    game.room.mode = 'practice';
+    const handId = game.room.handId;
+    const deadline = game.room.actionDeadline;
+    game.host.request({ type: 'hand.continue', roomCode: game.room.code, handId });
+    expect(game.host.last('game.error').payload.code).toBe('HAND_REVIEW_NOT_AVAILABLE');
+    expect(game.room.game.phase).toBe('playing');
+    expect(game.room.handId).toBe(handId);
+    expect(game.room.actionDeadline).toBe(deadline);
+  });
+
+  it('does not restart the eight-second review when a player reconnects', () => {
+    const game = setup();
+    const guest = game.twoPlayers();
+    game.act(game.host);
+    game.elapse(4_000);
+    guest.finishClose();
+    const resumed = game.connect();
+    resumed.request({ type: 'session.resume', token: guest.last('session.ready').payload.token });
+    expect(resumed.last('room.state').payload.handReviewUntil).toBe(9_000);
+    game.elapse(4_000);
+    expect(game.room.game.handNumber).toBe(2);
+  });
+
+  it('retains a friend hand result for eight seconds and rejects manual skipping', () => {
+    const game = setup();
+    game.twoPlayers();
+    const handId = game.room.handId;
+    game.act(game.host);
+    expect(game.host.last('room.state').payload.handReviewUntil).toBe(9_000);
+    game.host.request({ type: 'hand.continue', roomCode: game.room.code, handId });
+    expect(game.host.last('game.error').payload.code).toBe('PRACTICE_ONLY');
+    game.elapse(7_999);
+    expect(game.room.handId).toBe(handId);
+    expect(game.room.game.lastHandResult.reason).toBe('fold');
+    game.elapse(1);
+    expect(game.room.game.handNumber).toBe(2);
+    expect(game.host.last('room.state').payload.handReviewUntil).toBeNull();
+  });
+
+  it('holds practice results until its player continues, rejects spectators and stale double-clicks', () => {
+    const game = setup();
+    const guest = game.twoPlayers();
+    // Exercise the production mode branch on a deterministic two-seat match.
+    game.room.mode = 'practice';
+    const handId = game.room.handId;
+    game.act(game.host);
+    game.elapse(60_000);
+    expect(game.room.handId).toBe(handId);
+    expect(game.room.game.phase).toBe('betweenHands');
+    guest.request({ type: 'hand.continue', roomCode: game.room.code, handId });
+    expect(guest.last('game.error').payload.code).toBe('HOST_ONLY');
+    const spectator = game.connect();
+    spectator.request({ type: 'room.join', roomCode: game.room.code, profile: profile('旁观') });
+    spectator.request({ type: 'hand.continue', roomCode: game.room.code, handId });
+    expect(spectator.last('game.error').payload.code).toBe('HOST_ONLY');
+    game.host.request({ type: 'hand.continue', roomCode: game.room.code, handId });
+    expect(game.room.game.handNumber).toBe(2);
+    game.host.request({ type: 'hand.continue', roomCode: game.room.code, handId });
+    expect(game.host.last('game.error').payload.code).toBe('STALE_HAND');
+    expect(game.room.game.handNumber).toBe(2);
+  });
+
+  it('shows the tenth practice hand before entering overall results', () => {
+    const game = setup();
+    const guest = game.twoPlayers();
+    game.room.mode = 'practice';
+    for (let hand = 1; hand <= 10; hand += 1) {
+      game.act(game.room.game.actorId === game.session.playerId ? game.host : guest);
+      expect(game.room.phase).toBe('playing');
+      expect(game.room.game.lastHandResult).not.toBeNull();
+      game.elapse(8_000);
+      expect(game.room.game.handNumber).toBe(hand);
+      game.host.request({ type: 'hand.continue', roomCode: game.room.code, handId: game.room.handId });
+    }
+    expect(game.room.phase).toBe('results');
+    expect(game.room.game.matchStatus.summary.handsPlayed).toBe(10);
+  });
+
   it('returns a fresh recipient-safe snapshot before rejecting a stale action without restarting the clock', () => {
     const game = setup();
     const guest = game.twoPlayers();
@@ -141,7 +222,10 @@ describe('server session lifecycle', () => {
     const spectatorId = spectator.last('session.ready').payload.playerId;
     for (let hand = 0; hand < 10; hand += 1) {
       game.act(game.room.game.actorId === game.session.playerId ? game.host : guest);
-      game.elapse(1_000);
+      game.elapse(7_999);
+      expect(game.room.phase).toBe('playing');
+      expect(game.room.game.handNumber).toBe(hand + 1);
+      game.elapse(1);
     }
     expect(game.room.phase).toBe('results');
     game.host.request({ type: 'match.rematch', roomCode: game.room.code });
@@ -196,7 +280,7 @@ describe('server session lifecycle', () => {
     game.act(resumed);
     expect(resumed.last('game.error')?.payload.code).toBe('HUMAN_CONTROL_PENDING');
     game.act(guest);
-    game.elapse(1_000);
+    game.elapse(8_000);
     expect(game.room.game.handNumber).toBe(3);
     expect(game.room.seats[0].controller).toBe('human');
     expect(game.server.services.sessions.activeController(game.session.playerId)).toBe('human');

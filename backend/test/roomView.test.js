@@ -33,7 +33,7 @@ function gameSnapshot({ street = 'flop', folded = false } = {}) {
     currentBet: 100,
     lastFullRaise: 40,
     pot: 160,
-    lastHandResult: street === 'showdown' ? { reason: 'showdown', winnerIds: ['hero'], pot: 160, hands: { hero: { label: 'One Pair' }, villain: { label: 'One Pair' } } } : null,
+    lastHandResult: street === 'showdown' ? { reason: 'showdown', winnerIds: ['hero'], pot: 160, hands: { hero: { category: 1, label: 'One Pair' }, villain: { category: 1, label: 'One Pair' } } } : null,
     matchStatus: { handNumber: 3, complete: false, reason: null, rankings: null, summary: null },
   };
 }
@@ -87,12 +87,28 @@ describe('projectRoom', () => {
     expect(view.game.players.hero.holeCards).toEqual(['As', 'Ah']);
     expect(view.game.players.villain.holeCards).toBeUndefined();
     expect(JSON.stringify(view)).not.toContain('Ks');
-    expect(view.game.lastHandResult).toEqual({ reason: 'showdown', winnerIds: ['hero'], pot: 160 });
+    expect(view.game.lastHandResult).toEqual({ reason: 'showdown', winnerIds: ['hero'], pot: 160, hands: { hero: { category: 1, label: 'One Pair' } } });
+    expect(view.game.lastHandResult.hands).not.toHaveProperty('villain');
+  });
+
+  it('exposes both eligible players hand types at showdown but never during betting', () => {
+    const view = projectRoom(room({ street: 'showdown' }), spectator());
+    expect(view.game.lastHandResult.hands).toEqual({ hero: { category: 1, label: 'One Pair' }, villain: { category: 1, label: 'One Pair' } });
+    expect(view.game.players.villain.holeCards).toEqual(['Ks', 'Kh']);
+    expect(projectRoom(room(), spectator()).game.lastHandResult).toBeNull();
   });
 
   it('includes legal actions only for the receiving player', () => {
     expect(projectRoom(room(), player('hero')).game.legalActions).toMatchObject({ callAmount: 40 });
     expect(projectRoom(room(), spectator()).game.legalActions).toBeNull();
+  });
+
+  it('does not show a hand type for an eliminated player who was not dealt in', () => {
+    const source = room({ street: 'showdown' });
+    source.game.snapshot().players.villain.holeCards = [];
+    const view = projectRoom(source, spectator());
+    expect(view.game.lastHandResult.hands).not.toHaveProperty('villain');
+    expect(view.game.players.villain.revealed).toBe(false);
   });
 
   it('exposes connection and bot-takeover state without changing seat ownership', () => {

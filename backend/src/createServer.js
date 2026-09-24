@@ -133,18 +133,21 @@ export function createServer({
     room.actionDeadline = null;
     if (room.game?.phase !== 'playing') restorePendingHumans(room);
     if (room.phase !== 'playing' || !room.game) return;
-    if (room.game.phase === 'betweenHands') {
+    if (room.game.lastHandResult && ['betweenHands', 'results'].includes(room.game.phase)) {
+      if (room.mode === 'practice') return;
+      // Keep the original deadline when automation is rescheduled on takeover.
+      room.handReviewUntil ??= now() + 8_000;
       const timeoutId = schedule(() => {
         handTimers.delete(room.code);
         try {
-          rooms.startNextHand(room.code);
+          rooms.finishHandReview(room.code);
           noteBotHand(room);
           scheduleAutomation(room);
           broadcastRoom(room);
         } catch (error) {
           log('next_hand_error', { roomHash: roomHash(room.code), errorCode: error.code ?? 'UNKNOWN' });
         }
-      }, 1_000);
+      }, Math.max(0, room.handReviewUntil - now()));
       handTimers.set(room.code, timeoutId);
       return;
     }
@@ -283,6 +286,10 @@ export function createServer({
       else if (message.type === 'room.bot.add') rooms.addBot(room.code, context.playerId, message.personaId);
       else if (message.type === 'room.bot.remove') rooms.removeBot(room.code, context.playerId, message.seat);
       else if (message.type === 'match.rematch') rooms.rematch(room.code, context.playerId);
+      else if (message.type === 'hand.continue') {
+        rooms.continuePracticeHand(room.code, context.playerId, message.handId);
+        noteBotHand(room);
+      }
       else if (message.type === 'game.action') {
         if (sessions.activeController(context.playerId) !== 'human') throw codedError('HUMAN_CONTROL_PENDING');
         rooms.applyGameAction(context.playerId, message);
